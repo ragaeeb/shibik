@@ -2,6 +2,7 @@ import path from 'node:path';
 import { getApiMockLookupPaths, isResponseMockCandidate } from '@/api-mocks.js';
 
 import { directoryExists } from '@/files.js';
+import { resolvePathWithinRoot } from '@/path-safety.js';
 
 const localContentTypes: Record<string, string> = {
     '.avif': 'image/avif',
@@ -42,8 +43,8 @@ const getRequestPath = (rootDir: string, pathname: string) => {
         normalizedPath = `${normalizedPath}index.html`;
     }
 
-    const filePath = path.join(rootDir, normalizedPath);
-    if (!filePath.startsWith(rootDir)) {
+    const filePath = resolvePathWithinRoot(rootDir, normalizedPath);
+    if (!filePath) {
         return null;
     }
 

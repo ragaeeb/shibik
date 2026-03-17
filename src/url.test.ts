@@ -38,7 +38,10 @@ describe('collapseDuplicateSegments', () => {
 
 describe('safeFilenameFromPath', () => {
     it('should preserve the extension while appending a stable hash', () => {
-        expect(safeFilenameFromPath('very/long/path/file.ktx2')).toMatch(/file_[a-f0-9]{12}\.ktx2$/);
+        const fileName = safeFilenameFromPath('very/long/path/file.ktx2');
+        expect(fileName).toMatch(/file_[a-f0-9]{12}\.ktx2$/);
+        expect(fileName.includes('/')).toBe(false);
+        expect(fileName.includes('\\')).toBe(false);
     });
 });
 

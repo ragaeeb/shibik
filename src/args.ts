@@ -9,6 +9,19 @@ const simpleSlug = (value: string) =>
         .replace(/^-+|-+$/g, '')
         .replace(/-{2,}/g, '-');
 
+const isHttpUrl = (value: string | undefined): value is string => {
+    if (!value) {
+        return false;
+    }
+
+    try {
+        const parsed = new URL(value);
+        return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    } catch {
+        return false;
+    }
+};
+
 const createDefaultArgs = (): CliArgs => {
     return {
         concurrency: 8,
@@ -106,13 +119,17 @@ const takeFlagValue = (argv: string[], index: number, inlineValue?: string): Fla
     return { consumed: 1, value: next };
 };
 
-const parseNumberFlag = (value: string | undefined, fallback: number) => {
+const parseNumberFlag = (flag: string, value: string | undefined) => {
     if (value === undefined) {
-        return fallback;
+        throw new Error(`Missing value for ${flag}`);
     }
 
     const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : fallback;
+    if (!Number.isFinite(parsed)) {
+        throw new Error(`Invalid value for ${flag}: ${value}`);
+    }
+
+    return parsed;
 };
 
 const setStringFlag = <K extends 'name' | 'origin' | 'out' | 'url' | 'userAgent'>(key: K): FlagHandler => ({
@@ -136,9 +153,10 @@ const setNumberFlag = <
         | 'timeoutMs',
 >(
     key: K,
+    flag: string,
 ): FlagHandler => ({
     apply: (args, value) => {
-        args[key] = parseNumberFlag(value, args[key]);
+        args[key] = parseNumberFlag(flag, value);
     },
     consumesValue: true,
 });
@@ -158,14 +176,14 @@ const setBooleanFlag = (apply: (args: CliArgs) => void): FlagHandler => ({
 });
 
 const flagHandlers: Record<string, FlagHandler> = {
-    '--concurrency': setNumberFlag('concurrency'),
+    '--concurrency': setNumberFlag('concurrency', '--concurrency'),
     '--extra': pushValueFlag('extraUrls'),
     '--extra-file': pushValueFlag('extraUrlFiles'),
     '--headful': setBooleanFlag((args) => {
         args.headless = false;
     }),
-    '--idle-wait': setNumberFlag('idleWaitMs'),
-    '--max-scrolls': setNumberFlag('maxScrolls'),
+    '--idle-wait': setNumberFlag('idleWaitMs', '--idle-wait'),
+    '--max-scrolls': setNumberFlag('maxScrolls', '--max-scrolls'),
     '--name': setStringFlag('name'),
     '--no-local-test': setBooleanFlag((args) => {
         args.localTest = false;
@@ -178,11 +196,11 @@ const flagHandlers: Record<string, FlagHandler> = {
     }),
     '--origin': setStringFlag('origin'),
     '--out': setStringFlag('out'),
-    '--retries': setNumberFlag('maxRetries'),
-    '--rounds': setNumberFlag('localTestRounds'),
-    '--scroll-delay': setNumberFlag('scrollDelayMs'),
-    '--scroll-step': setNumberFlag('scrollStep'),
-    '--timeout': setNumberFlag('timeoutMs'),
+    '--retries': setNumberFlag('maxRetries', '--retries'),
+    '--rounds': setNumberFlag('localTestRounds', '--rounds'),
+    '--scroll-delay': setNumberFlag('scrollDelayMs', '--scroll-delay'),
+    '--scroll-step': setNumberFlag('scrollStep', '--scroll-step'),
+    '--timeout': setNumberFlag('timeoutMs', '--timeout'),
     '--url': setStringFlag('url'),
     '--user-agent': setStringFlag('userAgent'),
     '--verbose': setBooleanFlag((args) => {
@@ -193,14 +211,22 @@ const flagHandlers: Record<string, FlagHandler> = {
 const helpFlags = new Set(['--help', '-h']);
 
 const applyPositionalValue = (args: CliArgs, raw: string) => {
+    if (isHttpUrl(raw) && !args.positionalUrl && !args.url) {
+        args.positionalUrl = raw;
+        return;
+    }
+
+    if (!args.positionalOut && !args.out) {
+        args.positionalOut = raw;
+        return;
+    }
+
     if (!args.positionalUrl && !args.url) {
         args.positionalUrl = raw;
         return;
     }
 
-    if (!args.positionalOut) {
-        args.positionalOut = raw;
-    }
+    throw new Error(`Unexpected positional argument: ${raw}`);
 };
 
 const applyFlagValue = (args: CliArgs, argv: string[], index: number, raw: string) => {
@@ -212,12 +238,55 @@ const applyFlagValue = (args: CliArgs, argv: string[], index: number, raw: strin
 
     const handler = flagHandlers[flag];
     if (!handler) {
-        return index;
+        throw new Error(`Unknown option: ${flag}`);
     }
 
     const { consumed, value } = takeFlagValue(argv, index, inlineValue);
+    if (handler.consumesValue && value === undefined) {
+        throw new Error(`Missing value for ${flag}`);
+    }
+
     handler.apply(args, value);
     return index + (handler.consumesValue ? consumed : 0);
+};
+
+const validateNumberArg = (
+    args: CliArgs,
+    key:
+        | 'concurrency'
+        | 'idleWaitMs'
+        | 'localTestRounds'
+        | 'maxRetries'
+        | 'maxScrolls'
+        | 'scrollDelayMs'
+        | 'scrollStep'
+        | 'timeoutMs',
+    flag: string,
+    minimum: number,
+) => {
+    const value = args[key];
+    if (!Number.isInteger(value) || value < minimum) {
+        throw new Error(`Invalid value for ${flag}: ${String(value)}`);
+    }
+};
+
+const validateArgs = (args: CliArgs) => {
+    validateNumberArg(args, 'concurrency', '--concurrency', 1);
+    validateNumberArg(args, 'idleWaitMs', '--idle-wait', 0);
+    validateNumberArg(args, 'localTestRounds', '--rounds', 0);
+    validateNumberArg(args, 'maxRetries', '--retries', 1);
+    validateNumberArg(args, 'maxScrolls', '--max-scrolls', 0);
+    validateNumberArg(args, 'scrollDelayMs', '--scroll-delay', 0);
+    validateNumberArg(args, 'scrollStep', '--scroll-step', 1);
+    validateNumberArg(args, 'timeoutMs', '--timeout', 1);
+
+    if (args.url && !isHttpUrl(args.url)) {
+        throw new Error(`Target URL must use http:// or https://: ${args.url}`);
+    }
+
+    if (args.origin && !isHttpUrl(args.origin)) {
+        throw new Error(`Origin must use http:// or https://: ${args.origin}`);
+    }
 };
 
 export const parseArgs = (argv: string[]): CliArgs => {
@@ -235,6 +304,9 @@ export const parseArgs = (argv: string[]): CliArgs => {
         }
 
         index = applyFlagValue(args, argv, index, raw);
+        if (args.help) {
+            break;
+        }
     }
 
     if (!args.url && args.positionalUrl) {
@@ -244,5 +316,6 @@ export const parseArgs = (argv: string[]): CliArgs => {
         args.out = args.positionalOut;
     }
 
+    validateArgs(args);
     return args;
 };

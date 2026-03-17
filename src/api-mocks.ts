@@ -4,6 +4,7 @@ import readline from 'node:readline/promises';
 
 import { ensureDir, pathExists, writeTextFile } from '@/files.js';
 import { log } from '@/logger.js';
+import { resolvePathWithinRoot } from '@/path-safety.js';
 import { hasAssetExtension } from '@/url.js';
 
 export const isApiCandidate = (urlStr: string, originHost: string) => {
@@ -106,12 +107,7 @@ const resolveApiMockDir = (outDir: string, pathname: string) => {
         filesystemPath = normalized;
     }
 
-    const absPath = path.join(outDir, filesystemPath);
-    if (!absPath.startsWith(outDir)) {
-        return null;
-    }
-
-    return absPath;
+    return resolvePathWithinRoot(outDir, filesystemPath);
 };
 
 export const resolveApiMockPath = (outDir: string, pathname: string, search = '') => {

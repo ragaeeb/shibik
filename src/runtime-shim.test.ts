@@ -3,7 +3,12 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { buildExternalPathAliases, injectRuntimeScriptTag, normalizeRuntimePath } from '@/runtime-shim.js';
+import {
+    buildAbsoluteExternalAliases,
+    buildExternalPathAliases,
+    injectRuntimeScriptTag,
+    normalizeRuntimePath,
+} from '@/runtime-shim.js';
 
 describe('injectRuntimeScriptTag', () => {
     it('should inject the runtime script at the start of the head', () => {
@@ -64,6 +69,33 @@ describe('buildExternalPathAliases', () => {
         const aliases = await buildExternalPathAliases(outDir);
         expect(aliases['/assets/otCommonStyles.css']).toBe(
             '/_external/cdn.cookielaw.org/scripttemplates/202602.1.0/assets/otCommonStyles.css',
+        );
+    });
+});
+
+describe('buildAbsoluteExternalAliases', () => {
+    const tempDirs: string[] = [];
+
+    afterEach(() => {
+        for (const dir of tempDirs.splice(0)) {
+            rmSync(dir, { force: true, recursive: true });
+        }
+    });
+
+    it('should expose absolute external urls for runtime rewriting', async () => {
+        const outDir = mkdtempSync(path.join(tmpdir(), 'shibik-runtime-'));
+        tempDirs.push(outDir);
+
+        const externalDir = path.join(outDir, '_external', 'cdn.cookielaw.org', 'assets');
+        mkdirSync(externalDir, { recursive: true });
+        writeFileSync(path.join(externalDir, 'otCommonStyles.css'), 'asset');
+
+        const aliases = await buildAbsoluteExternalAliases(outDir);
+        expect(aliases['https://cdn.cookielaw.org/assets/otCommonStyles.css']).toBe(
+            '/_external/cdn.cookielaw.org/assets/otCommonStyles.css',
+        );
+        expect(aliases['//cdn.cookielaw.org/assets/otCommonStyles.css']).toBe(
+            '/_external/cdn.cookielaw.org/assets/otCommonStyles.css',
         );
     });
 });

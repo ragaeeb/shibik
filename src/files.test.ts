@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it } from 'bun:test';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, lstatSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { applyCapturedEntryHtml, writePlaceholderForMissing } from '@/files.js';
+import { applyCapturedEntryHtml, ensureDir, writePlaceholderForMissing } from '@/files.js';
 
 describe('writePlaceholderForMissing', () => {
     const tempDirs: string[] = [];
@@ -34,6 +34,39 @@ describe('writePlaceholderForMissing', () => {
 
         const written = await writePlaceholderForMissing('https://www.redbull.com/v3/resources/startApp.js', outDir);
         expect(written).toBe(false);
+    });
+});
+
+describe('ensureDir', () => {
+    const tempDirs: string[] = [];
+
+    afterEach(() => {
+        for (const dir of tempDirs.splice(0)) {
+            rmSync(dir, { force: true, recursive: true });
+        }
+    });
+
+    it('should create nested directories', async () => {
+        const outDir = mkdtempSync(path.join(tmpdir(), 'shibik-files-'));
+        tempDirs.push(outDir);
+
+        const nestedDir = path.join(outDir, 'assets', 'images');
+        await ensureDir(nestedDir);
+
+        expect(existsSync(path.join(outDir, 'assets'))).toBe(true);
+        expect(existsSync(nestedDir)).toBe(true);
+        expect(lstatSync(nestedDir).isDirectory()).toBe(true);
+    });
+
+    it('should not delete conflicting files while creating directories', async () => {
+        const outDir = mkdtempSync(path.join(tmpdir(), 'shibik-files-'));
+        tempDirs.push(outDir);
+
+        const blocker = path.join(outDir, 'assets');
+        await Bun.write(blocker, 'existing-file');
+
+        await expect(ensureDir(path.join(blocker, 'images'))).rejects.toThrow();
+        expect(await Bun.file(blocker).text()).toBe('existing-file');
     });
 });
 

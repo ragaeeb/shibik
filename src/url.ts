@@ -24,7 +24,9 @@ export const safeFilenameFromPath = (relPath: string) => {
     const ext = path.extname(relPath);
     const base = relPath.slice(0, relPath.length - ext.length);
     const hash = createHash('sha1').update(relPath).digest('hex').slice(0, 12);
-    return `${base.slice(0, 80)}_${hash}${ext || '.bin'}`;
+    const flattenedBase = base.replace(/[\\/]+/g, '_').replace(/^_+|_+$/g, '');
+    const safeBase = (flattenedBase || 'asset').slice(-80);
+    return `${safeBase}_${hash}${ext || '.bin'}`;
 };
 
 export const shouldSkipUrl = (urlStr: string) => {

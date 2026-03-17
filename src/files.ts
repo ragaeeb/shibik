@@ -1,4 +1,4 @@
-import { lstat, mkdir, rm } from 'node:fs/promises';
+import { lstat, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 
 import { EMPTY_SVG, TRANSPARENT_PNG } from '@/constants.js';
@@ -45,28 +45,7 @@ export const directoryExists = async (dir: string) => {
 };
 
 export const ensureDir = async (dir: string) => {
-    const resolved = path.resolve(dir);
-    const root = path.parse(resolved).root;
-    const relative = path.relative(root, resolved);
-    const segments = relative ? relative.split(path.sep).filter(Boolean) : [];
-    let current = root;
-
-    for (const segment of segments) {
-        current = path.join(current, segment);
-
-        try {
-            const stats = await lstat(current);
-            if (!stats.isDirectory()) {
-                await rm(current, { force: true, recursive: true });
-            } else {
-                continue;
-            }
-        } catch {
-            // Missing path segments are created below.
-        }
-
-        await mkdir(current, { recursive: true });
-    }
+    await mkdir(dir, { recursive: true });
 };
 
 export const walkDir = (dir: string) => {

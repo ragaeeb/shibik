@@ -122,14 +122,20 @@ const writeBinaryFetchResult = async (urlStr: string, dataUrl: string, config: C
     return true;
 };
 
-const downloadWithPageFetch = async (page: Page, urlStr: string, config: Config, originHost: string) => {
+const downloadWithPageFetch = async (
+    page: Page,
+    urlStr: string,
+    config: Config,
+    originHost: string,
+    capturedApi: Set<string>,
+) => {
     if (isResponseMockCandidate(urlStr, originHost)) {
         const response = await fetchTextWithPageContext(page, urlStr);
         if (!response.ok || !isValidFetchedContent(urlStr, response.contentType)) {
             return false;
         }
 
-        return await storeCapturedApiResponse(urlStr, response.body, response.contentType, config.outDir, new Set());
+        return await storeCapturedApiResponse(urlStr, response.body, response.contentType, config.outDir, capturedApi);
     }
 
     const response = await fetchBinaryWithPageContext(page, urlStr);
@@ -140,7 +146,13 @@ const downloadWithPageFetch = async (page: Page, urlStr: string, config: Config,
     return await writeBinaryFetchResult(urlStr, response.dataUrl, config, originHost);
 };
 
-const downloadWithNavigation = async (page: Page, urlStr: string, config: Config, originHost: string) => {
+const downloadWithNavigation = async (
+    page: Page,
+    urlStr: string,
+    config: Config,
+    originHost: string,
+    capturedApi: Set<string>,
+) => {
     await page.setExtraHTTPHeaders(buildFallbackHeaders(urlStr, config, originHost));
     const response = await page.goto(urlStr, {
         timeout: config.timeoutMs,
@@ -156,7 +168,7 @@ const downloadWithNavigation = async (page: Page, urlStr: string, config: Config
             await response.text(),
             response.headers()['content-type'] ?? '',
             config.outDir,
-            new Set(),
+            capturedApi,
         );
     }
 
@@ -180,6 +192,7 @@ export const downloadWithBrowserFallback = async (urls: string[], config: Config
     try {
         const page = await browser.newPage();
         const navigationPage = await browser.newPage();
+        const capturedApi = new Set<string>();
         await page.setUserAgent({ userAgent: config.userAgent });
         await navigationPage.setUserAgent({ userAgent: config.userAgent });
         await page
@@ -194,8 +207,8 @@ export const downloadWithBrowserFallback = async (urls: string[], config: Config
             try {
                 const ok =
                     new URL(urlStr).host === originHost
-                        ? await downloadWithPageFetch(page, urlStr, config, originHost)
-                        : await downloadWithNavigation(navigationPage, urlStr, config, originHost);
+                        ? await downloadWithPageFetch(page, urlStr, config, originHost, capturedApi)
+                        : await downloadWithNavigation(navigationPage, urlStr, config, originHost, capturedApi);
                 if (!ok) {
                     failed.push(urlStr);
                 }

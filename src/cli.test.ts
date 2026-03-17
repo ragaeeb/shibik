@@ -25,6 +25,12 @@ describe('parseArgs', () => {
         expect(args.out).toBe('../threejs');
     });
 
+    it('should accept a positional output directory before the positional url', () => {
+        const args = parseArgs(['../threejs', 'https://example.com/demo']);
+        expect(args.url).toBe('https://example.com/demo');
+        expect(args.out).toBe('../threejs');
+    });
+
     it('should prefer explicit --out over positional output', () => {
         const args = parseArgs(['https://example.com/demo', '../ignored', '--out', './used']);
         expect(args.out).toBe('./used');
@@ -40,17 +46,27 @@ describe('parseArgs', () => {
         expect(args.extraUrls).toEqual(['https://example.com/a.png', 'https://example.com/b.png']);
     });
 
-    it('should not consume another flag as a missing option value', () => {
-        const args = parseArgs(['--out', '--url', 'https://example.com/demo']);
-        expect(args.out).toBeUndefined();
-        expect(args.url).toBe('https://example.com/demo');
+    it('should fail fast when an option value is missing', () => {
+        expect(() => parseArgs(['--out', '--url', 'https://example.com/demo'])).toThrow('Missing value for --out');
     });
 
-    it('should keep numeric defaults when flag values are invalid', () => {
-        const args = parseArgs(['https://example.com', '--timeout', 'oops', '--concurrency', 'NaN']);
+    it('should reject invalid numeric flag values', () => {
+        expect(() => parseArgs(['https://example.com', '--timeout', 'oops'])).toThrow(
+            'Invalid value for --timeout: oops',
+        );
+        expect(() => parseArgs(['https://example.com', '--concurrency', '0'])).toThrow(
+            'Invalid value for --concurrency: 0',
+        );
+    });
 
-        expect(args.timeoutMs).toBe(60000);
-        expect(args.concurrency).toBe(8);
+    it('should reject unknown flags', () => {
+        expect(() => parseArgs(['https://example.com', '--wat'])).toThrow('Unknown option: --wat');
+    });
+
+    it('should reject non-http positional urls', () => {
+        expect(() => parseArgs(['./relative-path', 'not-a-url'])).toThrow(
+            'Target URL must use http:// or https://: not-a-url',
+        );
     });
 });
 

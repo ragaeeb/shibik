@@ -37,6 +37,7 @@ const EXTERNAL_ALIAS_FOLDERS = new Set([
 ]);
 
 type RuntimeAliasMaps = {
+    absoluteAliases: Record<string, string>;
     pathAliases: Record<string, string>;
     queryAliases: Record<string, string>;
 };
@@ -159,14 +160,41 @@ export const buildExternalPathAliases = async (outDir: string) => {
     );
 };
 
-const buildRuntimeCode = ({ pathAliases, queryAliases }: RuntimeAliasMaps, entryDir: string) => {
+export const buildAbsoluteExternalAliases = async (outDir: string) => {
+    const aliases = new Map<string, string>();
+    const externalDir = path.join(outDir, '_external');
+    if (!(await directoryExists(externalDir))) {
+        return {};
+    }
+
+    for (const filePath of walkDir(externalDir)) {
+        const relativePath = path.relative(externalDir, filePath).replace(/\\/g, '/');
+        const parts = relativePath.split('/');
+        const host = parts[0];
+        const rest = parts.slice(1).join('/');
+        if (!host || !rest) {
+            continue;
+        }
+
+        const localUrlPath = `/_external/${relativePath}`;
+        aliases.set(`https://${host}/${rest}`, localUrlPath);
+        aliases.set(`http://${host}/${rest}`, localUrlPath);
+        aliases.set(`//${host}/${rest}`, localUrlPath);
+    }
+
+    return Object.fromEntries(aliases);
+};
+
+const buildRuntimeCode = ({ absoluteAliases, pathAliases, queryAliases }: RuntimeAliasMaps, entryDir: string) => {
     const markers = JSON.stringify(ROOT_NORMALIZATION_MARKERS);
+    const absoluteAliasJson = JSON.stringify(absoluteAliases);
     const pathAliasJson = JSON.stringify(pathAliases);
     const queryAliasJson = JSON.stringify(queryAliases);
     const entryDirJson = JSON.stringify(normalizeEntryDir(entryDir));
 
     return `(() => {
   const ROOT_NORMALIZATION_MARKERS = ${markers};
+  const ABSOLUTE_ALIASES = ${absoluteAliasJson};
   const PATH_ALIASES = ${pathAliasJson};
   const QUERY_ALIASES = ${queryAliasJson};
   const ENTRY_DIR = ${entryDirJson};
@@ -227,7 +255,12 @@ const buildRuntimeCode = ({ pathAliases, queryAliases }: RuntimeAliasMaps, entry
     }
 
     if (url.origin !== window.location.origin) {
-      return null;
+      const absoluteAlias = ABSOLUTE_ALIASES[\`\${url.origin}\${url.pathname}\`] ?? ABSOLUTE_ALIASES[\`//\${url.host}\${url.pathname}\`];
+      if (!absoluteAlias) {
+        return null;
+      }
+
+      return new URL(\`\${absoluteAlias}\${url.search}\${url.hash}\`, window.location.origin).toString();
     }
 
     const originalPath = url.pathname;
@@ -392,12 +425,13 @@ export const writeRuntimeShim = async (
     candidateUrls: Iterable<string>,
     entryPath: string,
 ) => {
-    const [pathAliases, queryAliases] = await Promise.all([
+    const [absoluteAliases, pathAliases, queryAliases] = await Promise.all([
+        buildAbsoluteExternalAliases(outDir),
         buildExternalPathAliases(outDir),
         buildQueryAliases(outDir, originHost, candidateUrls),
     ]);
 
     const entryDir = getEntryDir(entryPath);
-    await writeRuntimeScript(outDir, { pathAliases, queryAliases }, entryDir);
+    await writeRuntimeScript(outDir, { absoluteAliases, pathAliases, queryAliases }, entryDir);
     await injectRuntimeScriptIntoHtmlFiles(outDir);
 };

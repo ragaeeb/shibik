@@ -115,8 +115,7 @@ const validateDownloadResponse = (absPath: string, response: Response) => {
 };
 
 const writeDownloadResponse = async (absPath: string, response: Response) => {
-    const body = new Uint8Array(await response.arrayBuffer());
-    await Bun.write(absPath, body);
+    await Bun.write(absPath, response);
 };
 
 const cleanupDownloadFile = async (absPath: string) => {

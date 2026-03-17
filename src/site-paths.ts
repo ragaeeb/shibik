@@ -1,5 +1,6 @@
 import path from 'node:path';
 
+import { resolvePathWithinRoot } from '@/path-safety.js';
 import { hasAssetExtension, safeFilenameFromPath, sanitizeSegment } from '@/url.js';
 
 export type LocalPathMapping = {
@@ -87,12 +88,7 @@ export const mapLocalTestUrlToPath = (urlStr: string, outDir: string) => {
             pathname = `${pathname}index.html`;
         }
 
-        const absPath = path.join(outDir, pathname);
-        if (!absPath.startsWith(outDir)) {
-            return null;
-        }
-
-        return absPath;
+        return resolvePathWithinRoot(outDir, pathname);
     } catch {
         return null;
     }

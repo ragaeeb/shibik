@@ -90,6 +90,12 @@ describe('resolveApiMockPath', () => {
         const resolved = resolveApiMockPath(outDir, '/../secrets.txt');
         expect(resolved).toBe(null);
     });
+
+    it('should return null for sibling traversal that shares the output prefix', () => {
+        const outDir = '/tmp/shibik-test';
+        const resolved = resolveApiMockPath(outDir, '/../shibik-test-other/secrets.txt');
+        expect(resolved).toBe(null);
+    });
 });
 
 describe('getApiMockLookupPaths', () => {
