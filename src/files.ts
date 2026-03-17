@@ -1,217 +1,196 @@
-import { lstat, mkdir, rm } from "node:fs/promises";
-import path from "node:path";
+import { lstat, mkdir } from 'node:fs/promises';
+import path from 'node:path';
 
-import { EMPTY_SVG, TRANSPARENT_PNG } from "@/constants.js";
-import { log } from "@/logger.js";
-import { mapLocalTestUrlToPath, mapUrlToLocalPath } from "@/site-paths.js";
+import { EMPTY_SVG, TRANSPARENT_PNG } from '@/constants.js';
+import { log } from '@/logger.js';
+import { mapLocalTestUrlToPath, mapUrlToLocalPath } from '@/site-paths.js';
 
-const glob = new Bun.Glob("**/*");
-const SHIBIK_BOOTSTRAP_MARKER = "<!-- shibik:bootstrap -->";
+const glob = new Bun.Glob('**/*');
+const SHIBIK_BOOTSTRAP_MARKER = '<!-- shibik:bootstrap -->';
 
 const arraysEqual = (left: Uint8Array, right: Uint8Array) => {
-  if (left.length !== right.length) {
-    return false;
-  }
-
-  for (let index = 0; index < left.length; index++) {
-    if (left[index] !== right[index]) {
-      return false;
+    if (left.length !== right.length) {
+        return false;
     }
-  }
 
-  return true;
+    for (let index = 0; index < left.length; index++) {
+        if (left[index] !== right[index]) {
+            return false;
+        }
+    }
+
+    return true;
 };
 
 const shouldSkipGlobPath = (relativePath: string, skips: Set<string>) => {
-  const parts = relativePath.replace(/\\/g, "/").split("/");
-  return parts.includes(".clone") || parts.some((part) => skips.has(part));
+    const parts = relativePath.replace(/\\/g, '/').split('/');
+    return parts.includes('.clone') || parts.some((part) => skips.has(part));
 };
 
 export const pathExists = async (targetPath: string) => {
-  try {
-    await lstat(targetPath);
-    return true;
-  } catch {
-    return false;
-  }
+    try {
+        await lstat(targetPath);
+        return true;
+    } catch {
+        return false;
+    }
 };
 
 export const directoryExists = async (dir: string) => {
-  try {
-    return (await lstat(dir)).isDirectory();
-  } catch {
-    return false;
-  }
+    try {
+        return (await lstat(dir)).isDirectory();
+    } catch {
+        return false;
+    }
 };
 
 export const ensureDir = async (dir: string) => {
-  const resolved = path.resolve(dir);
-  const root = path.parse(resolved).root;
-  const relative = path.relative(root, resolved);
-  const segments = relative ? relative.split(path.sep).filter(Boolean) : [];
-  let current = root;
-
-  for (const segment of segments) {
-    current = path.join(current, segment);
-
-    try {
-      const stats = await lstat(current);
-      if (!stats.isDirectory()) {
-        await rm(current, { force: true, recursive: true });
-      } else {
-        continue;
-      }
-    } catch {
-      // Missing path segments are created below.
-    }
-
-    await mkdir(current, { recursive: true });
-  }
+    await mkdir(dir, { recursive: true });
 };
 
 export const walkDir = (dir: string) => {
-  const files: string[] = [];
+    const files: string[] = [];
 
-  for (const relativePath of glob.scanSync({ absolute: false, cwd: dir, dot: true })) {
-    if (shouldSkipGlobPath(relativePath, new Set())) {
-      continue;
+    for (const relativePath of glob.scanSync({ absolute: false, cwd: dir, dot: true })) {
+        if (shouldSkipGlobPath(relativePath, new Set())) {
+            continue;
+        }
+
+        files.push(path.join(dir, relativePath));
     }
 
-    files.push(path.join(dir, relativePath));
-  }
-
-  return files;
+    return files;
 };
 
 export const walkDirWithSkips = (dir: string, skips: Set<string>) => {
-  const files: string[] = [];
+    const files: string[] = [];
 
-  for (const relativePath of glob.scanSync({ absolute: false, cwd: dir, dot: true })) {
-    if (shouldSkipGlobPath(relativePath, skips)) {
-      continue;
+    for (const relativePath of glob.scanSync({ absolute: false, cwd: dir, dot: true })) {
+        if (shouldSkipGlobPath(relativePath, skips)) {
+            continue;
+        }
+
+        files.push(path.join(dir, relativePath));
     }
 
-    files.push(path.join(dir, relativePath));
-  }
-
-  return files;
+    return files;
 };
 
 export const readTextFile = (filePath: string) => {
-  return Bun.file(filePath).text();
+    return Bun.file(filePath).text();
 };
 
 export const writeTextFile = (filePath: string, contents: string) => {
-  return Bun.write(filePath, contents);
+    return Bun.write(filePath, contents);
 };
 
 export const writeLinesFile = (filePath: string, lines: string[]) => {
-  return Bun.write(filePath, lines.join("\n"));
+    return Bun.write(filePath, lines.join('\n'));
 };
 
 export const isHtmlChallengeBody = async (filePath: string) => {
-  const ext = path.extname(filePath).toLowerCase();
-  if (ext === ".html" || ext === ".htm" || ext === ".svg" || ext === ".xml") {
-    return false;
-  }
+    const ext = path.extname(filePath).toLowerCase();
+    if (ext === '.html' || ext === '.htm' || ext === '.svg' || ext === '.xml') {
+        return false;
+    }
 
-  const file = Bun.file(filePath);
-  if (!(await file.exists())) {
-    return false;
-  }
+    const file = Bun.file(filePath);
+    if (!(await file.exists())) {
+        return false;
+    }
 
-  try {
-    const head = (await file.slice(0, 256).text()).trimStart().toLowerCase();
-    return head.startsWith("<html") || head.startsWith("<!doctype html");
-  } catch {
-    return false;
-  }
+    try {
+        const head = (await file.slice(0, 256).text()).trimStart().toLowerCase();
+        return head.startsWith('<html') || head.startsWith('<!doctype html');
+    } catch {
+        return false;
+    }
 };
 
 export const isPlaceholderFile = async (filePath: string) => {
-  const ext = path.extname(filePath).toLowerCase();
-  const file = Bun.file(filePath);
-  if (!(await file.exists())) {
+    const ext = path.extname(filePath).toLowerCase();
+    const file = Bun.file(filePath);
+    if (!(await file.exists())) {
+        return false;
+    }
+
+    if (ext === '.png') {
+        try {
+            const bytes = new Uint8Array(await file.arrayBuffer());
+            return arraysEqual(bytes, TRANSPARENT_PNG);
+        } catch {
+            return false;
+        }
+    }
+
+    if (ext === '.svg') {
+        try {
+            return (await file.text()) === EMPTY_SVG;
+        } catch {
+            return false;
+        }
+    }
+
     return false;
-  }
-
-  if (ext === ".png") {
-    try {
-      const bytes = new Uint8Array(await file.arrayBuffer());
-      return arraysEqual(bytes, TRANSPARENT_PNG);
-    } catch {
-      return false;
-    }
-  }
-
-  if (ext === ".svg") {
-    try {
-      return (await file.text()) === EMPTY_SVG;
-    } catch {
-      return false;
-    }
-  }
-
-  return false;
 };
 
 export const writePlaceholderForMissing = async (urlStr: string, outDir: string) => {
-  const absPath = mapLocalTestUrlToPath(urlStr, outDir);
-  if (!absPath) {
-    return false;
-  }
+    const absPath = mapLocalTestUrlToPath(urlStr, outDir);
+    if (!absPath) {
+        return false;
+    }
 
-  const ext = path.extname(absPath).toLowerCase();
-  const relativePath = path.relative(outDir, absPath).replace(/\\/g, "/");
-  const isExternalAsset = relativePath.startsWith("_external/");
-  let body: Uint8Array | string | null = null;
+    const ext = path.extname(absPath).toLowerCase();
+    const relativePath = path.relative(outDir, absPath).replace(/\\/g, '/');
+    const isExternalAsset = relativePath.startsWith('_external/');
+    let body: Uint8Array | string | null = null;
 
-  if (ext === ".png") {
-    body = TRANSPARENT_PNG;
-  } else if (ext === ".svg") {
-    body = EMPTY_SVG;
-  } else if (isExternalAsset && ext === ".js") {
-    body = "// Placeholder generated by shibik for an unavailable external script.\n";
-  } else if (isExternalAsset && ext === ".css") {
-    body = "/* Placeholder generated by shibik for unavailable external CSS. */\n";
-  } else if (isExternalAsset && ext === ".json") {
-    body = "{}\n";
-  } else {
-    return false;
-  }
+    if (ext === '.png') {
+        body = TRANSPARENT_PNG;
+    } else if (ext === '.svg') {
+        body = EMPTY_SVG;
+    } else if (isExternalAsset && ext === '.js') {
+        body = '// Placeholder generated by shibik for an unavailable external script.\n';
+    } else if (isExternalAsset && ext === '.css') {
+        body = '/* Placeholder generated by shibik for unavailable external CSS. */\n';
+    } else if (isExternalAsset && ext === '.json') {
+        body = '{}\n';
+    } else {
+        return false;
+    }
 
-  await ensureDir(path.dirname(absPath));
-  await Bun.write(absPath, body);
-  log("WARN", `Created placeholder asset for unresolved upstream 404: ${path.relative(outDir, absPath)}`);
-  return true;
+    await ensureDir(path.dirname(absPath));
+    await Bun.write(absPath, body);
+    log('WARN', `Created placeholder asset for unresolved upstream 404: ${path.relative(outDir, absPath)}`);
+    return true;
 };
 
 export const ensureServeBootstrap = async (outDir: string, entryPath: string) => {
-  const rootIndex = path.join(outDir, "index.html");
-  if (await Bun.file(rootIndex).exists()) {
-    try {
-      const existing = await Bun.file(rootIndex).text();
-      if (!existing.includes(SHIBIK_BOOTSTRAP_MARKER)) {
-        return;
-      }
-    } catch {
-      return;
+    const rootIndex = path.join(outDir, 'index.html');
+    if (await Bun.file(rootIndex).exists()) {
+        try {
+            const existing = await Bun.file(rootIndex).text();
+            if (!existing.includes(SHIBIK_BOOTSTRAP_MARKER)) {
+                return;
+            }
+        } catch {
+            return;
+        }
     }
-  }
 
-  const entryUrl = new URL(entryPath, "https://local.test");
-  const pathname = entryUrl.pathname || "/";
-  if (pathname === "/") {
-    return;
-  }
+    const entryUrl = new URL(entryPath, 'https://local.test');
+    const pathname = entryUrl.pathname || '/';
+    if (pathname === '/') {
+        return;
+    }
 
-  const relativeTarget = pathname.replace(/^\/+/, "");
-  if (!relativeTarget) {
-    return;
-  }
+    const relativeTarget = pathname.replace(/^\/+/, '');
+    if (!relativeTarget) {
+        return;
+    }
 
-  const redirectTarget = `./${relativeTarget}${entryUrl.search}${entryUrl.hash}`;
-  const html = `<!doctype html>
+    const redirectTarget = `./${relativeTarget}${entryUrl.search}${entryUrl.hash}`;
+    const html = `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -227,75 +206,70 @@ export const ensureServeBootstrap = async (outDir: string, entryPath: string) =>
 </html>
 `;
 
-  await Bun.write(rootIndex, html);
+    await Bun.write(rootIndex, html);
 };
 
 export const saveCapturedEntryHtml = async (html: string, outDir: string) => {
-  if (!html.trim()) {
-    return;
-  }
+    if (!html.trim()) {
+        return;
+    }
 
-  await ensureDir(outDir);
-  await ensureDir(path.join(outDir, ".clone"));
-  await Bun.write(path.join(outDir, ".clone", "captured-entry.html"), html);
+    await ensureDir(outDir);
+    await ensureDir(path.join(outDir, '.clone'));
+    await Bun.write(path.join(outDir, '.clone', 'captured-entry.html'), html);
 };
 
 export const shouldReplaceEntryHtml = async (absPath: string, capturedHtml: string) => {
-  const file = Bun.file(absPath);
-  if (!(await file.exists())) {
-    return true;
-  }
-
-  try {
-    if (file.size === 0) {
-      return true;
+    const file = Bun.file(absPath);
+    if (!(await file.exists())) {
+        return true;
     }
 
-    const existing = await file.text();
-    if (!existing.trim()) {
-      return true;
+    try {
+        if (file.size === 0) {
+            return true;
+        }
+
+        const existing = await file.text();
+        if (!existing.trim()) {
+            return true;
+        }
+
+        if (/cloudflare|attention required|captcha/i.test(existing)) {
+            return true;
+        }
+
+        if (existing.includes('<canvas') && !capturedHtml.includes('<canvas')) {
+            return true;
+        }
+
+        if (existing.trim().length < 200 && capturedHtml.trim().length > 400) {
+            return true;
+        }
+    } catch {
+        return true;
     }
 
-    if (/cloudflare|attention required|captcha/i.test(existing)) {
-      return true;
-    }
-
-    if (existing.includes("<canvas") && !capturedHtml.includes("<canvas")) {
-      return true;
-    }
-
-    if (existing.trim().length < 200 && capturedHtml.trim().length > 400) {
-      return true;
-    }
-  } catch {
-    return true;
-  }
-
-  return false;
+    return false;
 };
 
-export const applyCapturedEntryHtml = async (
-  urlStr: string,
-  html: string,
-  outDir: string,
-  originHost: string,
-) => {
-  if (!html.trim()) {
-    return;
-  }
+export const applyCapturedEntryHtml = async (urlStr: string, html: string, outDir: string, originHost: string) => {
+    if (!html.trim()) {
+        return;
+    }
 
-  let absPath: string;
+    let absPath: string;
 
-  try {
-    ({ absPath } = mapUrlToLocalPath(urlStr, outDir, originHost));
-  } catch {
-    return;
-  }
+    try {
+        ({ absPath } = mapUrlToLocalPath(urlStr, outDir, originHost));
+    } catch {
+        return;
+    }
 
-  if (!(await shouldReplaceEntryHtml(absPath, html))) {
-    return;
-  }
+    if (!(await shouldReplaceEntryHtml(absPath, html))) {
+        return;
+    }
 
-  await ensureDir(path.dirname(absPath));
-  await Bun.write(absPath, html);
+    await ensureDir(path.dirname(absPath));
+    await Bun.write(absPath, html);
 };

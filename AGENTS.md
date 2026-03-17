@@ -8,7 +8,6 @@ This repository ships `shibik`, a CLI for capturing and localizing complex websi
 - Keep the CLI entrypoint thin in `src/cli.ts`.
 - Put reusable parsing and utility logic in focused modules such as `src/args.ts`, `src/url.ts`, `src/logger.ts`, and `src/types.ts`.
 - Keep the high-level orchestration in `src/core.ts`.
-- Tests live in `test/`.
 - Published output is generated into `dist/`.
 - CI and release automation live in `.github/workflows/`.
 
@@ -64,6 +63,7 @@ bun run src/cli.ts https://example.com
 - Use `type` aliases instead of `interface`.
 - Prefer `const name = (...) => {}` over classic `function name(...) {}` declarations.
 - Add unit tests for pure helpers whenever practical, and use the `it("should ...")` naming convention in `bun:test`.
+- Unit-tests must live in the same directory as their implementations files, not in a `test` or `__tests__` directory.
 - When refactoring, move testable logic out of `src/core.ts` before changing behavior.
 
 ## Release Expectations
