@@ -31,6 +31,19 @@ describe('mapLocalTestUrlToPath', () => {
     it('should reject sibling traversal paths that share the output prefix', () => {
         expect(mapLocalTestUrlToPath('http://local.test/..%2Fout-other/secret.txt', '/tmp/out')).toBeNull();
     });
+
+    it('should resolve encoded external asset requests to the sanitized local file path', () => {
+        const sourceUrl =
+            'https://cdn.prod.website-files.com/6891a5aecbde722a4a9adbba/68a3da2305ef5935615cdc49_1-We%20listen_we%20craft_we%20deliver%20(1).avif';
+        const { absPath } = mapUrlToLocalPath(sourceUrl, '/tmp/out', 'www.1820productions.com');
+
+        expect(
+            mapLocalTestUrlToPath(
+                'http://local.test/_external/cdn.prod.website-files.com/6891a5aecbde722a4a9adbba/68a3da2305ef5935615cdc49_1-We%20listen_we%20craft_we%20deliver%20(1).avif',
+                '/tmp/out',
+            ),
+        ).toBe(absPath);
+    });
 });
 
 describe('getEntryDir', () => {

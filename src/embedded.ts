@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { readdir } from 'node:fs/promises';
 
 import { EMBEDDED_ASSET_FOLDERS, TEXT_EXTENSIONS } from '@/constants.js';
 import { directoryExists, readTextFile, walkDirWithSkips } from '@/files.js';
@@ -22,17 +23,30 @@ type EmbeddedContext = {
     urls: Set<string>;
 };
 
+type NestedOverrideResult = {
+    extraUrls: Set<string>;
+    overrides: Map<string, string>;
+};
+
 const assetFolderPattern = EMBEDDED_ASSET_FOLDERS.join('|');
+const embeddedAssetFolderSet = new Set<string>(EMBEDDED_ASSET_FOLDERS);
+const embeddedAssetExtensionPattern =
+    'avif|webp|png|jpe?g|gif|svg|mp3|m4a|ogg|wav|mp4|webm|glb|gltf|bin|ktx2|drc|hdr|exr|json|riv|wasm|js|mjs|css|woff2?|ttf|otf|ico|webmanifest|map';
 const urlRegex = /(https?:\/\/[^\s"'`)\]]+|\/\/[^\s"'`)\]]+)/g;
-const relRegex = /(['"`])((?:\.{0,2}\/|\/)[^'"`\s]+?\.[a-z0-9]{2,8}(?:\?[^'"`]*)?)(?=\1)/gi;
+const relRegex = new RegExp(
+    `(['"\\x60])((?:\\.{0,2}\\/|\\/)[^'"\\x60\\s]+?\\.(?:${embeddedAssetExtensionPattern})(?:\\?[^'"\\x60]*)?)(?=\\1)`,
+    'gi',
+);
 const bareAssetRegex = new RegExp(
-    `(['"\\x60])((?:${assetFolderPattern})\\/[^'"\\x60\\s]+?\\.[a-z0-9]{2,8}(?:\\?[^'"\\x60]*)?)(?=\\1)`,
+    `(['"\\x60])((?:${assetFolderPattern})\\/[^'"\\x60\\s]+?\\.(?:${embeddedAssetExtensionPattern})(?:\\?[^'"\\x60]*)?)(?=\\1)`,
     'gi',
 );
 const assetPrefixRegex = new RegExp(`(['"\\x60])((?:${assetFolderPattern})\\/)(?=\\1)`, 'gi');
-const assetFilenameRegex =
-    /(['"`])([a-z0-9][a-z0-9._-]{2,}\.(?:avif|webp|png|jpe?g|gif|svg|mp3|m4a|ogg|wav|mp4|webm|glb|gltf|bin|ktx2|drc|hdr|exr|json|riv|wasm|js|mjs|css))(?:[?#][^'"`]*)?(?=\1)/gi;
-const cssUrlRegex = /url\(([^)]+)\)/gi;
+const assetFilenameRegex = new RegExp(
+    `(['"\\x60])([a-z0-9][a-z0-9._-]{2,}\\.(?:${embeddedAssetExtensionPattern}))(?:[?#][^'"\\x60]*)?(?=\\1)`,
+    'gi',
+);
+const cssUrlRegex = /(?:^|[\s:;,])url\(([^)]+)\)/gi;
 const srcsetRegex = /\bsrcset\s*=\s*(['"])([^'"]+)\1/gi;
 
 const createEmbeddedContext = ({
@@ -170,6 +184,134 @@ const collectBareAssetUrls = (content: string, context: EmbeddedContext) => {
     }
 };
 
+const findUniqueNestedAssetChild = async (rootDir: string, childEntries: string[], candidateDir: string) => {
+    const matchingChildren: string[] = [];
+    for (const child of childEntries) {
+        const childDir = path.join(rootDir, child);
+        if (!(await directoryExists(childDir))) {
+            continue;
+        }
+
+        const nestedTargetDir = path.join(childDir, candidateDir);
+        if (await directoryExists(nestedTargetDir)) {
+            matchingChildren.push(child);
+        }
+    }
+
+    return matchingChildren.length === 1 ? matchingChildren[0] : null;
+};
+
+const buildNestedAssetPathInfo = ({
+    candidate,
+    child,
+    entryPath,
+    fileRelativeDir,
+    origin,
+    rootFolder,
+}: {
+    candidate: string;
+    child: string;
+    entryPath: string;
+    fileRelativeDir: string;
+    origin: string;
+    rootFolder: string;
+}) => {
+    const resolvedPath = candidate.startsWith('./') || candidate.startsWith('../')
+        ? new URL(candidate, `${origin}/${fileRelativeDir ? `${fileRelativeDir}/` : ''}`).pathname
+        : new URL(candidate, `${origin}${getEntryDir(entryPath)}`).pathname;
+    const relativePath = resolvedPath.replace(/^\/+/, '');
+    if (!relativePath || relativePath.startsWith(`${rootFolder}/`)) {
+        return null;
+    }
+
+    return {
+        nestedUrl: new URL(`${rootFolder}/${child}/${relativePath}`, `${origin}/`).toString(),
+        relativePath,
+        rootUrl: new URL(resolvedPath, origin).toString(),
+    };
+};
+
+const collectKtxModelVariantUrls = (url: string) => {
+    if (!url.endsWith('-ktx.glb')) {
+        return [];
+    }
+
+    return [url.replace(/-ktx\.glb$/, '-ktx-512.glb')];
+};
+
+const buildAssetNestedOverrides = async (
+    outDir: string,
+    origin: string,
+    entryPath: string,
+    fileRelativeDir: string,
+    content: string,
+) => {
+    const result: NestedOverrideResult = {
+        extraUrls: new Set<string>(),
+        overrides: new Map<string, string>(),
+    };
+    const fileDirParts = fileRelativeDir.split('/').filter(Boolean);
+    const rootFolder = fileDirParts[0];
+    if (!rootFolder || !embeddedAssetFolderSet.has(rootFolder)) {
+        return result;
+    }
+
+    const rootDir = path.join(outDir, rootFolder);
+    let childEntries: string[];
+    try {
+        childEntries = await readdir(rootDir);
+    } catch {
+        return result;
+    }
+
+    const candidates = new Set<string>();
+    for (const match of content.matchAll(bareAssetRegex)) {
+        const candidate = normalizeEmbeddedUrl(match[2] ?? '');
+        if (!candidate || candidate.startsWith('./') || candidate.startsWith('../') || candidate.startsWith('/')) {
+            continue;
+        }
+        candidates.add(candidate);
+    }
+
+    for (const match of content.matchAll(relRegex)) {
+        const candidate = normalizeEmbeddedUrl(match[2] ?? '');
+        if (!candidate || (!candidate.startsWith('./') && !candidate.startsWith('../'))) {
+            continue;
+        }
+        candidates.add(candidate);
+    }
+
+    for (const candidate of candidates) {
+        const candidatePath = candidate.startsWith('./') || candidate.startsWith('../')
+            ? new URL(candidate, `${origin}/${fileRelativeDir ? `${fileRelativeDir}/` : ''}`).pathname.replace(/^\/+/, '')
+            : candidate;
+        const candidateDir = path.dirname(candidatePath);
+        const child = await findUniqueNestedAssetChild(rootDir, childEntries, candidateDir);
+        if (!child) {
+            continue;
+        }
+
+        const nestedInfo = buildNestedAssetPathInfo({
+            candidate,
+            child,
+            entryPath,
+            fileRelativeDir,
+            origin,
+            rootFolder,
+        });
+        if (!nestedInfo) {
+            continue;
+        }
+
+        result.overrides.set(nestedInfo.rootUrl, nestedInfo.nestedUrl);
+        for (const variantUrl of collectKtxModelVariantUrls(nestedInfo.nestedUrl)) {
+            result.extraUrls.add(variantUrl);
+        }
+    }
+
+    return result;
+};
+
 const collectAssetPrefixes = (content: string) => {
     const prefixes = new Set<string>();
     for (const match of content.matchAll(assetPrefixRegex)) {
@@ -218,6 +360,11 @@ const collectCombinedAssetUrls = (content: string, context: EmbeddedContext) => 
 
 const collectCssUrls = (content: string, context: EmbeddedContext) => {
     for (const match of content.matchAll(cssUrlRegex)) {
+        const prefix = content.slice(Math.max(0, (match.index ?? 0) - 8), match.index ?? 0).toLowerCase();
+        if (/\bnew\s*$/.test(prefix)) {
+            continue;
+        }
+
         const candidate = normalizeEmbeddedUrl(match[1] ?? '');
         if (!candidate || candidate.startsWith('data:') || candidate.startsWith('#') || candidate.startsWith('var(')) {
             continue;
@@ -408,13 +555,28 @@ export const collectEmbeddedUrls = async (outDir: string, origin: string, entryP
         }
 
         const relDir = path.relative(outDir, path.dirname(file)).replace(/\\/g, '/');
+        const nestedOverrides = await buildAssetNestedOverrides(
+            outDir,
+            origin,
+            entryPath,
+            relDir === '.' ? '' : relDir,
+            content,
+        );
         for (const url of collectEmbeddedUrlsFromContent({
             content,
             entryPath,
             fileRelativeDir: relDir === '.' ? '' : relDir,
             origin,
         })) {
+            const override = nestedOverrides.overrides.get(url);
+            if (override) {
+                urls.add(override);
+                continue;
+            }
             urls.add(url);
+        }
+        for (const extraUrl of nestedOverrides.extraUrls) {
+            urls.add(extraUrl);
         }
     }
 

@@ -85,7 +85,7 @@ const shouldSkipApiResponse = (
     method: string,
     originHost: string,
 ) => {
-    if (!isResponseMockCandidate(urlStr, originHost)) {
+    if (!isResponseMockCandidate(urlStr, originHost, method)) {
         return true;
     }
 

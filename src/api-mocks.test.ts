@@ -39,6 +39,14 @@ describe('isResponseMockCandidate', () => {
     it('should reject asset urls with query strings', () => {
         expect(isResponseMockCandidate('https://example.com/assets/app.js?v=1', 'example.com')).toBe(false);
     });
+
+    it('should accept same-origin non-asset post endpoints without query strings', () => {
+        expect(isResponseMockCandidate('https://vision.avatr.com/main/', 'vision.avatr.com', 'POST')).toBe(true);
+    });
+
+    it('should reject same-origin html routes for get requests without query strings', () => {
+        expect(isResponseMockCandidate('https://vision.avatr.com/about/', 'vision.avatr.com', 'GET')).toBe(false);
+    });
 });
 
 describe('parseJsonBody', () => {

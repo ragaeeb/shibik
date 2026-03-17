@@ -88,7 +88,12 @@ export const mapLocalTestUrlToPath = (urlStr: string, outDir: string) => {
             pathname = `${pathname}index.html`;
         }
 
-        return resolvePathWithinRoot(outDir, pathname);
+        if (!resolvePathWithinRoot(outDir, pathname)) {
+            return null;
+        }
+
+        const safeSegments = pathname.replace(/^\/+/, '').split('/').filter(Boolean).map(sanitizeSegment);
+        return resolvePathWithinRoot(outDir, safeSegments.join('/'));
     } catch {
         return null;
     }

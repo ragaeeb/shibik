@@ -2,7 +2,7 @@ import path from 'node:path';
 import { getApiMockLookupPaths, isResponseMockCandidate } from '@/api-mocks.js';
 
 import { directoryExists } from '@/files.js';
-import { resolvePathWithinRoot } from '@/path-safety.js';
+import { mapLocalTestUrlToPath } from '@/site-paths.js';
 
 const localContentTypes: Record<string, string> = {
     '.avif': 'image/avif',
@@ -38,17 +38,18 @@ const localContentTypes: Record<string, string> = {
 };
 
 const getRequestPath = (rootDir: string, pathname: string) => {
+    const requestPathname = pathname;
     let normalizedPath = pathname;
     if (normalizedPath.endsWith('/')) {
         normalizedPath = `${normalizedPath}index.html`;
     }
 
-    const filePath = resolvePathWithinRoot(rootDir, normalizedPath);
+    const filePath = mapLocalTestUrlToPath(`http://local.test${normalizedPath}`, rootDir);
     if (!filePath) {
         return null;
     }
 
-    return { filePath, pathname: normalizedPath };
+    return { filePath, pathname: normalizedPath, requestPathname };
 };
 
 const resolveExistingFilePath = async (filePath: string) => {
@@ -65,8 +66,8 @@ const resolveExistingFilePath = async (filePath: string) => {
     return { file, filePath: resolvedPath };
 };
 
-const resolveApiMockFile = async (rootDir: string, requestUrl: string, pathname: string, search: string) => {
-    if (!isResponseMockCandidate(requestUrl, new URL(requestUrl).host)) {
+const resolveApiMockFile = async (rootDir: string, requestUrl: string, pathname: string, search: string, method: string) => {
+    if (!isResponseMockCandidate(requestUrl, new URL(requestUrl).host, method)) {
         return null;
     }
 
@@ -98,7 +99,7 @@ export const startStaticServer = (rootDir: string) => {
 
             const resolvedFile =
                 (await resolveExistingFilePath(requestPath.filePath)) ??
-                (await resolveApiMockFile(rootDir, req.url, requestPath.pathname, url.search));
+                (await resolveApiMockFile(rootDir, req.url, requestPath.requestPathname, url.search, req.method));
             if (!resolvedFile) {
                 return new Response('Not Found', { status: 404 });
             }

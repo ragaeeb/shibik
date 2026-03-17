@@ -160,6 +160,49 @@ export const buildExternalPathAliases = async (outDir: string) => {
     );
 };
 
+export const buildLocalPathAliases = async (outDir: string) => {
+    const aliases = new Map<string, string | null>();
+
+    for (const filePath of walkDir(outDir)) {
+        const relativePath = path.relative(outDir, filePath).replace(/\\/g, '/');
+        if (!relativePath || relativePath.startsWith('_external/')) {
+            continue;
+        }
+
+        const parts = relativePath.split('/');
+        if (parts.length < 3) {
+            continue;
+        }
+
+        const rootFolder = parts[0];
+        const nestedFolderIndex = parts.findIndex(
+            (part, index) => index >= 2 && EXTERNAL_ALIAS_FOLDERS.has(part),
+        );
+        if (!EXTERNAL_ALIAS_FOLDERS.has(rootFolder) || nestedFolderIndex < 0) {
+            continue;
+        }
+
+        const aliasKey = `/${[rootFolder, ...parts.slice(nestedFolderIndex)].join('/')}`;
+        const localFile = Bun.file(path.join(outDir, aliasKey.replace(/^\/+/, '')));
+        if (await localFile.exists()) {
+            continue;
+        }
+
+        const nextValue = `/${relativePath}`;
+        const previous = aliases.get(aliasKey);
+        if (previous && previous !== nextValue) {
+            aliases.set(aliasKey, null);
+            continue;
+        }
+
+        aliases.set(aliasKey, nextValue);
+    }
+
+    return Object.fromEntries(
+        Array.from(aliases.entries()).filter((entry): entry is [string, string] => typeof entry[1] === 'string'),
+    );
+};
+
 export const buildAbsoluteExternalAliases = async (outDir: string) => {
     const aliases = new Map<string, string>();
     const externalDir = path.join(outDir, '_external');
@@ -427,7 +470,12 @@ export const writeRuntimeShim = async (
 ) => {
     const [absoluteAliases, pathAliases, queryAliases] = await Promise.all([
         buildAbsoluteExternalAliases(outDir),
-        buildExternalPathAliases(outDir),
+        Promise.all([buildExternalPathAliases(outDir), buildLocalPathAliases(outDir)]).then(
+            ([externalAliases, localAliases]) => ({
+                ...externalAliases,
+                ...localAliases,
+            }),
+        ),
         buildQueryAliases(outDir, originHost, candidateUrls),
     ]);
 

@@ -72,4 +72,53 @@ describe('startStaticServer', () => {
         expect(response.status).toBe(200);
         expect(response.headers.get('content-type')).toBe('image/vnd.radiance');
     });
+
+    it('should serve sanitized external asset filenames when the request path contains encoded spaces', async () => {
+        const outDir = mkdtempSync(path.join(tmpdir(), 'shibuk-local-server-'));
+        tempDirs.push(outDir);
+
+        const filePath = path.join(
+            outDir,
+            '_external',
+            'cdn.prod.website-files.com',
+            '6891a5aecbde722a4a9adbba',
+            '68a3da2305ef5935615cdc49_1-We_listen_we_craft_we_deliver_(1).avif',
+        );
+        await Bun.write(filePath, new Uint8Array([1, 2, 3]));
+
+        const server = startStaticServer(outDir);
+        servers.push(server);
+
+        const response = await fetch(
+            new URL(
+                '/_external/cdn.prod.website-files.com/6891a5aecbde722a4a9adbba/68a3da2305ef5935615cdc49_1-We%20listen_we%20craft_we%20deliver%20(1).avif',
+                server.url,
+            ),
+        );
+
+        expect(response.status).toBe(200);
+        expect(response.headers.get('content-type')).toBe('image/avif');
+    });
+
+    it('should serve stored json mocks for same-origin post endpoints without query strings', async () => {
+        const outDir = mkdtempSync(path.join(tmpdir(), 'shibuk-local-server-'));
+        tempDirs.push(outDir);
+
+        expect(await storeApiMockValue('https://vision.avatr.com/main/', { error: 'Function not defined' }, outDir)).toBe(
+            true,
+        );
+
+        const server = startStaticServer(outDir);
+        servers.push(server);
+
+        const response = await fetch(new URL('/main/', server.url), {
+            body: 'functionToCall=callCenter',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            method: 'POST',
+        });
+
+        expect(response.status).toBe(200);
+        expect(response.headers.get('content-type')).toBe('application/json');
+        expect(await response.json()).toEqual({ error: 'Function not defined' });
+    });
 });

@@ -127,6 +127,34 @@ describe('collectEmbeddedUrlsFromContent', () => {
         expect(urls).toContain('https://example.com/pages/demo/bg.png');
         expect(urls).toContain('https://example.com/pages/demo/font.woff2');
     });
+
+    it('should ignore templated placeholder asset urls', () => {
+        const urls = collectEmbeddedUrlsFromContent({
+            content: 'const locale = "/assets/locales/{{lng}}.json";',
+            entryPath: '/',
+            fileRelativeDir: 'assets',
+            origin: 'https://paodao.fr',
+        });
+
+        expect(urls).toEqual([]);
+    });
+
+    it('should ignore javascript expressions that only look like relative asset paths', () => {
+        const urls = collectEmbeddedUrlsFromContent({
+            content: `
+                const a = new URL(document.baseURI);
+                const b = new URL(a.href, document.baseURI);
+                const c = new URL(this.URL, o);
+                const d = window.location.href;
+                const e = window.location.pathname, t = 1;
+            `,
+            entryPath: '/',
+            fileRelativeDir: 'assets',
+            origin: 'https://vision.avatr.com',
+        });
+
+        expect(urls).toEqual([]);
+    });
 });
 
 describe('collectEmbeddedUrls', () => {
@@ -153,6 +181,46 @@ describe('collectEmbeddedUrls', () => {
             expect(
                 urls.filter((url) => url === 'https://virtualexpodubai.com/_next/static/chunks/pages/index-abc.js'),
             ).toHaveLength(1);
+        } finally {
+            rmSync(outDir, { force: true, recursive: true });
+        }
+    });
+
+    it('should prefer a unique nested local asset root for relative model helper paths and include ktx size variants', async () => {
+        const outDir = mkdtempSync(path.join(tmpdir(), 'shibuk-embedded-'));
+        try {
+            await ensureDir(path.join(outDir, 'assets'));
+            await ensureDir(path.join(outDir, 'assets', 'game', 'models'));
+            await Bun.write(
+                path.join(outDir, 'assets', 'index.js'),
+                'Te.AddModel(z.GLB_BAG,this._getAssetPath("../models/bag-ktx.glb"));',
+            );
+            await Bun.write(path.join(outDir, 'assets', 'game', 'models', 'menu-ktx-512.glb'), 'asset');
+
+            const urls = await collectEmbeddedUrls(outDir, 'https://paodao.fr', '/');
+            expect(urls).toContain('https://paodao.fr/assets/game/models/bag-ktx.glb');
+            expect(urls).toContain('https://paodao.fr/assets/game/models/bag-ktx-512.glb');
+            expect(urls).not.toContain('https://paodao.fr/models/bag-ktx.glb');
+            expect(urls).not.toContain('https://paodao.fr/models/bag-ktx-512.glb');
+        } finally {
+            rmSync(outDir, { force: true, recursive: true });
+        }
+    });
+
+    it('should prefer a unique nested local asset root for bare helper asset paths', async () => {
+        const outDir = mkdtempSync(path.join(tmpdir(), 'shibuk-embedded-'));
+        try {
+            await ensureDir(path.join(outDir, 'assets'));
+            await ensureDir(path.join(outDir, 'assets', 'game', 'sounds', 'loops'));
+            await Bun.write(
+                path.join(outDir, 'assets', 'index.js'),
+                'const music = this._getAssetPath("sounds/loops/strange.mp3");',
+            );
+            await Bun.write(path.join(outDir, 'assets', 'game', 'sounds', 'loops', 'chill.mp3'), 'asset');
+
+            const urls = await collectEmbeddedUrls(outDir, 'https://paodao.fr', '/');
+            expect(urls).toContain('https://paodao.fr/assets/game/sounds/loops/strange.mp3');
+            expect(urls).not.toContain('https://paodao.fr/sounds/loops/strange.mp3');
         } finally {
             rmSync(outDir, { force: true, recursive: true });
         }

@@ -35,6 +35,18 @@ describe('writePlaceholderForMissing', () => {
         const written = await writePlaceholderForMissing('https://www.redbull.com/v3/resources/startApp.js', outDir);
         expect(written).toBe(false);
     });
+
+    it('should write placeholder video files for unavailable same-host mp4 assets', async () => {
+        const outDir = mkdtempSync(path.join(tmpdir(), 'shibuk-files-'));
+        tempDirs.push(outDir);
+
+        const written = await writePlaceholderForMissing('https://vision.avatr.com/vid.mp4', outDir);
+        expect(written).toBe(true);
+
+        const file = Bun.file(path.join(outDir, 'vid.mp4'));
+        expect(await file.exists()).toBe(true);
+        expect(file.size).toBe(0);
+    });
 });
 
 describe('ensureDir', () => {

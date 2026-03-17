@@ -6,6 +6,7 @@ import path from 'node:path';
 import {
     buildAbsoluteExternalAliases,
     buildExternalPathAliases,
+    buildLocalPathAliases,
     injectRuntimeScriptTag,
     normalizeRuntimePath,
 } from '@/runtime-shim.js';
@@ -70,6 +71,28 @@ describe('buildExternalPathAliases', () => {
         expect(aliases['/assets/otCommonStyles.css']).toBe(
             '/_external/cdn.cookielaw.org/scripttemplates/202602.1.0/assets/otCommonStyles.css',
         );
+    });
+});
+
+describe('buildLocalPathAliases', () => {
+    const tempDirs: string[] = [];
+
+    afterEach(() => {
+        for (const dir of tempDirs.splice(0)) {
+            rmSync(dir, { force: true, recursive: true });
+        }
+    });
+
+    it('should expose nested local asset folders under a collapsed root alias', async () => {
+        const outDir = mkdtempSync(path.join(tmpdir(), 'shibuk-runtime-'));
+        tempDirs.push(outDir);
+
+        const localDir = path.join(outDir, 'assets', 'game', 'images', 'preload');
+        mkdirSync(localDir, { recursive: true });
+        writeFileSync(path.join(localDir, 'gamepad.webp'), 'asset');
+
+        const aliases = await buildLocalPathAliases(outDir);
+        expect(aliases['/assets/images/preload/gamepad.webp']).toBe('/assets/game/images/preload/gamepad.webp');
     });
 });
 

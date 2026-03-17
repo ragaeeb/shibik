@@ -16,12 +16,14 @@ export const isApiCandidate = (urlStr: string, originHost: string) => {
     }
 };
 
-export const isResponseMockCandidate = (urlStr: string, originHost: string) => {
+export const isResponseMockCandidate = (urlStr: string, originHost: string, method = 'GET') => {
     try {
         const url = new URL(urlStr);
         return (
             url.host === originHost &&
-            (url.pathname.includes('/api/') || (Boolean(url.search) && !hasAssetExtension(urlStr)))
+            (url.pathname.includes('/api/') ||
+                (Boolean(url.search) && !hasAssetExtension(urlStr)) ||
+                (method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS' && !hasAssetExtension(urlStr)))
         );
     } catch {
         return false;
