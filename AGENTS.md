@@ -64,6 +64,7 @@ bun run src/cli.ts https://example.com
 - Use `type` aliases instead of `interface`.
 - Prefer `const name = (...) => {}` over classic `function name(...) {}` declarations.
 - Add unit tests for pure helpers whenever practical, and use the `it("should ...")` naming convention in `bun:test`.
+- Unit-tests must live in the same directory as their implementations files, not in a `test` or `__tests__` directory.
 - When refactoring, move testable logic out of `src/core.ts` before changing behavior.
 
 ## Release Expectations
