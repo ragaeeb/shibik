@@ -1,10 +1,15 @@
 # shibik
 
+![Big Plump Bird](icon.png)
+
 [![Bun](https://img.shields.io/badge/runtime-Bun-000000?logo=bun&logoColor=f9f1e1)](https://bun.sh)
 [![TypeScript](https://img.shields.io/badge/language-TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![Puppeteer](https://img.shields.io/badge/browser-Puppeteer-40B5A4?logo=puppeteer&logoColor=white)](https://pptr.dev)
 [![Biome](https://img.shields.io/badge/lint-Biome-60A5FA?logo=biome&logoColor=white)](https://biomejs.dev)
 [![semantic-release](https://img.shields.io/badge/release-semantic--release-e10079?logo=semantic-release&logoColor=white)](https://semantic-release.gitbook.io)
+[![wakatime](https://wakatime.com/badge/user/a0b906ce-b8e7-4463-8bce-383238df6d4b/project/a18c2e6d-2b79-4ae7-ac77-bc822df7766e.svg)](https://wakatime.com/badge/user/a0b906ce-b8e7-4463-8bce-383238df6d4b/project/a18c2e6d-2b79-4ae7-ac77-bc822df7766e)
+![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/ragaeeb/shibik?utm_source=oss&utm_medium=github&utm_campaign=ragaeeb%2Fshibik&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
+[![codecov](https://codecov.io/gh/ragaeeb/shibik/graph/badge.svg?token=UVLXK99AT6)](https://codecov.io/gh/ragaeeb/shibik)
 
 `shibik` captures a live website, downloads its fetched assets, rewrites paths for local hosting, and runs a local 404 recovery pass. It is designed for modern WebGL, Three.js, Framer, and other asset-heavy marketing sites where a plain `wget` mirror usually fails.
 
