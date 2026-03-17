@@ -58,12 +58,12 @@ export const defaultNameFromUrl = (urlStr: string) => {
 
 export const printHelp = () => {
     const msg = `\
-shibik
+shibuk
 
 Usage:
-  shibik https://example.com
-  shibik --url https://example.com --name my-project
-  bunx shibik https://example.com --out ./example
+  shibuk https://example.com
+  shibuk --url https://example.com --name my-project
+  bunx shibuk https://example.com --out ./example
 
 Common options:
   --name <name>           Output folder name (optional; auto-slugged from URL if omitted)
@@ -87,10 +87,10 @@ Common options:
   --verbose               Verbose logging
 
 Examples:
-  shibik https://example.com
-  shibik https://example.com ./my-output
-  shibik https://example.com/brand/ --out ./brand
-  bunx shibik https://example.com --name example-site
+  shibuk https://example.com
+  shibuk https://example.com ./my-output
+  shibuk https://example.com/brand/ --out ./brand
+  bunx shibuk https://example.com --name example-site
 `;
 
     console.log(msg);

@@ -20,7 +20,7 @@ describe('persistPrerenderCacheMocks', () => {
     });
 
     it('should write query-based response mocks from the prerender cache', async () => {
-        const outDir = mkdtempSync(path.join(tmpdir(), 'shibik-prerender-'));
+        const outDir = mkdtempSync(path.join(tmpdir(), 'shibuk-prerender-'));
         tempDirs.push(outDir);
 
         const html = `<!doctype html>
@@ -45,7 +45,7 @@ describe('persistPrerenderCacheMocks', () => {
     });
 
     it('should create empty inline-content fallbacks from page config panels', async () => {
-        const outDir = mkdtempSync(path.join(tmpdir(), 'shibik-prerender-'));
+        const outDir = mkdtempSync(path.join(tmpdir(), 'shibuk-prerender-'));
         tempDirs.push(outDir);
 
         const html = `<!doctype html>
@@ -95,7 +95,7 @@ describe('persistPrerenderCacheMocks', () => {
     });
 
     it('should create inline-content fallbacks from stored page config responses', async () => {
-        const outDir = mkdtempSync(path.join(tmpdir(), 'shibik-prerender-'));
+        const outDir = mkdtempSync(path.join(tmpdir(), 'shibuk-prerender-'));
         tempDirs.push(outDir);
 
         const pageConfigDir = path.join(outDir, 'v3', 'config', 'pages');

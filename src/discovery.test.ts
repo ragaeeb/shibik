@@ -131,7 +131,7 @@ describe('collectEmbeddedUrlsFromContent', () => {
 
 describe('collectEmbeddedUrls', () => {
     it('should avoid entry-dir _next duplicates when root _next exists', async () => {
-        const outDir = mkdtempSync(path.join(tmpdir(), 'shibik-embedded-'));
+        const outDir = mkdtempSync(path.join(tmpdir(), 'shibuk-embedded-'));
         try {
             const buildManifest = `self.__BUILD_MANIFEST={"/": ["./../static/chunks/pages/index-abc.js"]};`;
             await ensureDir(path.join(outDir, '_next', 'static', 'build'));

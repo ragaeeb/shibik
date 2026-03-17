@@ -4,10 +4,10 @@
         "url": "https://github.com/ragaeeb"
     },
     "bin": {
-        "shibik": "./dist/cli.js"
+        "shibuk": "dist/cli.js"
     },
     "bugs": {
-        "url": "https://github.com/ragaeeb/shibik/issues"
+        "url": "https://github.com/ragaeeb/shibuk/issues"
     },
     "dependencies": {
         "puppeteer": "^24.39.1"
@@ -28,15 +28,12 @@
     "engines": {
         "bun": ">=1.3.10"
     },
-    "exports": {
-        ".": "./dist/cli.js"
-    },
     "files": [
         "dist",
         "README.md",
         "LICENSE.md"
     ],
-    "homepage": "https://github.com/ragaeeb/shibik#readme",
+    "homepage": "https://github.com/ragaeeb/shibuk#readme",
     "keywords": [
         "cli",
         "clone",
@@ -48,15 +45,15 @@
         "webgl"
     ],
     "license": "MIT",
-    "name": "shibik",
+    "name": "shibuk",
     "packageManager": "bun@1.3.10",
     "private": false,
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/ragaeeb/shibik.git"
+        "url": "git+https://github.com/ragaeeb/shibuk.git"
     },
     "scripts": {
-        "build": "tsc -p tsconfig.build.json && bun scripts/rewrite-dist-imports.ts",
+        "build": "bun scripts/build-dist.ts",
         "check": "biome lint .",
         "format": "biome check . --write",
         "prepublishOnly": "npm run build",
@@ -64,5 +61,5 @@
         "typecheck": "tsc --noEmit"
     },
     "type": "module",
-    "version": "1.0.0"
+    "version": "1.0.1"
 }

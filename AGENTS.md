@@ -1,6 +1,6 @@
 # Agent Workflow
 
-This repository ships `shibik`, a CLI for capturing and localizing complex websites into static clones that can be served locally.
+This repository ships `shibuk`, a CLI for capturing and localizing complex websites into static clones that can be served locally.
 
 ## Project Shape
 
@@ -55,7 +55,7 @@ bun run src/cli.ts https://example.com
 - Target Bun `1.3.10+` unless the repository explicitly bumps the runtime.
 - Prefer Bun-native runtime APIs for filesystem and local serving work: `Bun.file`, `Bun.write`, `Bun.Glob`, and `Bun.serve`.
 - If Bun does not expose a needed directory primitive yet, use the smallest possible `node:fs/promises` fallback and keep it isolated to focused utility modules.
-- Build output in `dist/` must avoid `@/` path aliases; the build pipeline rewrites them to relative imports so `bunx shibik` can run without a bundled `tsconfig.json`.
+- Build output in `dist/` must avoid `@/` path aliases; the build pipeline rewrites them to relative imports so `bunx shibuk` can run without a bundled `tsconfig.json`.
 - The first positional argument should be treated as the target URL when `--url` is omitted.
 - Avoid regressing the local recovery flow. The core value of the tool is not just capture, but also rebasing, asset discovery, and iterative missing-asset repair.
 - Keep `.clone/` artifacts documented and stable. They are part of the debugging workflow.

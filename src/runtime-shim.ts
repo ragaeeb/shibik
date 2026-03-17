@@ -5,7 +5,7 @@ import { directoryExists, readTextFile, walkDir, writeTextFile } from '@/files.j
 import { getEntryDir } from '@/site-paths.js';
 
 const RUNTIME_FILE_NAME = '__shibik_runtime.js';
-const RUNTIME_SCRIPT_ATTR = 'data-shibik-runtime="true"';
+const RUNTIME_SCRIPT_ATTR = 'data-shibuk-runtime="true"';
 const ROOT_NORMALIZATION_MARKERS = [
     '/_external/',
     '/v3/',

@@ -76,7 +76,7 @@ describe('downloadUrl', () => {
         servers.push(server);
 
         const origin = server.url.origin.replace('localhost', '127.0.0.1');
-        const outDir = mkdtempSync(path.join(tmpdir(), 'shibik-download-'));
+        const outDir = mkdtempSync(path.join(tmpdir(), 'shibuk-download-'));
         tempDirs.push(outDir);
 
         const result = await downloadUrl(
@@ -106,7 +106,7 @@ describe('downloadUrl', () => {
         servers.push(server);
 
         const origin = server.url.origin.replace('localhost', '127.0.0.1');
-        const outDir = mkdtempSync(path.join(tmpdir(), 'shibik-download-'));
+        const outDir = mkdtempSync(path.join(tmpdir(), 'shibuk-download-'));
         tempDirs.push(outDir);
 
         const result = await downloadUrl(
@@ -142,7 +142,7 @@ describe('downloadUrl', () => {
         servers.push(server);
 
         const origin = server.url.origin.replace('localhost', '127.0.0.1');
-        const outDir = mkdtempSync(path.join(tmpdir(), 'shibik-download-'));
+        const outDir = mkdtempSync(path.join(tmpdir(), 'shibuk-download-'));
         tempDirs.push(outDir);
 
         const startedAt = Date.now();
@@ -177,7 +177,7 @@ describe('downloadUrl', () => {
         servers.push(server);
 
         const origin = server.url.origin.replace('localhost', '127.0.0.1');
-        const outDir = mkdtempSync(path.join(tmpdir(), 'shibik-download-'));
+        const outDir = mkdtempSync(path.join(tmpdir(), 'shibuk-download-'));
         tempDirs.push(outDir);
 
         const result = await downloadUrl(
@@ -192,7 +192,7 @@ describe('downloadUrl', () => {
 
     it('should normalize localhost urls during missing-download verification', async () => {
         const origin = 'https://example.com';
-        const outDir = mkdtempSync(path.join(tmpdir(), 'shibik-download-'));
+        const outDir = mkdtempSync(path.join(tmpdir(), 'shibuk-download-'));
         tempDirs.push(outDir);
 
         await Bun.write(path.join(outDir, 'assets', 'demo.png'), 'image-data');

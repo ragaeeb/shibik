@@ -11,6 +11,10 @@ describe('rewriteImports', () => {
         expect(rewriteImports("import '@/runtime.js';")).toBe("import './runtime.js';");
     });
 
+    it('should rewrite minified static imports without spaces', () => {
+        expect(rewriteImports('import{main as i}from"@/core.js";')).toBe('import{main as i}from"./core.js";');
+    });
+
     it('should rewrite dynamic imports that use the alias prefix', () => {
         expect(rewriteImports("const module = await import('@/runtime.js');")).toBe(
             "const module = await import('./runtime.js');",

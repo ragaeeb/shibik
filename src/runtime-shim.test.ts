@@ -16,13 +16,13 @@ describe('injectRuntimeScriptTag', () => {
         const nextHtml = injectRuntimeScriptTag(html);
 
         expect(nextHtml).toContain(
-            '<head><script src="/__shibik_runtime.js" data-shibik-runtime="true"></script><title>Test</title>',
+            '<head><script src="/__shibik_runtime.js" data-shibuk-runtime="true"></script><title>Test</title>',
         );
     });
 
     it('should not inject the runtime script twice', () => {
         const html =
-            '<!doctype html><html><head><script src="/__shibik_runtime.js" data-shibik-runtime="true"></script></head><body></body></html>';
+            '<!doctype html><html><head><script src="/__shibik_runtime.js" data-shibuk-runtime="true"></script></head><body></body></html>';
 
         expect(injectRuntimeScriptTag(html)).toBe(html);
     });
@@ -38,7 +38,7 @@ describe('buildExternalPathAliases', () => {
     });
 
     it('should expose unique root aliases for external b assets', async () => {
-        const outDir = mkdtempSync(path.join(tmpdir(), 'shibik-runtime-'));
+        const outDir = mkdtempSync(path.join(tmpdir(), 'shibuk-runtime-'));
         tempDirs.push(outDir);
 
         const externalDir = path.join(outDir, '_external', 'p-p.redbull.com', 'rb-red-bulle-of-wheels-11-prod', 'b');
@@ -52,7 +52,7 @@ describe('buildExternalPathAliases', () => {
     });
 
     it('should expose unique root aliases for external asset folders', async () => {
-        const outDir = mkdtempSync(path.join(tmpdir(), 'shibik-runtime-'));
+        const outDir = mkdtempSync(path.join(tmpdir(), 'shibuk-runtime-'));
         tempDirs.push(outDir);
 
         const externalDir = path.join(
@@ -83,7 +83,7 @@ describe('buildAbsoluteExternalAliases', () => {
     });
 
     it('should expose absolute external urls for runtime rewriting', async () => {
-        const outDir = mkdtempSync(path.join(tmpdir(), 'shibik-runtime-'));
+        const outDir = mkdtempSync(path.join(tmpdir(), 'shibuk-runtime-'));
         tempDirs.push(outDir);
 
         const externalDir = path.join(outDir, '_external', 'cdn.cookielaw.org', 'assets');

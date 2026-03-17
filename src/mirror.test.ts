@@ -17,7 +17,7 @@ describe('copyMissingTree', () => {
     });
 
     it('should fill missing files and replace placeholders without overwriting real files', async () => {
-        const rootDir = mkdtempSync(path.join(tmpdir(), 'shibik-mirror-'));
+        const rootDir = mkdtempSync(path.join(tmpdir(), 'shibuk-mirror-'));
         tempDirs.push(rootDir);
 
         const sourceDir = path.join(rootDir, 'source');

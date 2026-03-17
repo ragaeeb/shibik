@@ -5,7 +5,7 @@ import { rewriteTextContent } from '@/rewrite.js';
 
 describe('rewriteTextContent', () => {
     it('should keep external sub-app relative asset folders relative', () => {
-        const outDir = '/tmp/shibik-test';
+        const outDir = '/tmp/shibuk-test';
         const filePath = path.join(
             outDir,
             '_external',
@@ -27,7 +27,7 @@ describe('rewriteTextContent', () => {
     });
 
     it('should rewrite external host-root asset folders to the external host root', () => {
-        const outDir = '/tmp/shibik-test';
+        const outDir = '/tmp/shibuk-test';
         const filePath = path.join(
             outDir,
             '_external',
@@ -49,7 +49,7 @@ describe('rewriteTextContent', () => {
     });
 
     it('should preserve CommonJS exports for bundled UMD modules when define exists', () => {
-        const outDir = '/tmp/shibik-test';
+        const outDir = '/tmp/shibuk-test';
         const filePath = path.join(outDir, 'assets', 'bundle.js');
 
         const result = rewriteTextContent({
@@ -67,7 +67,7 @@ describe('rewriteTextContent', () => {
     });
 
     it('should preserve CommonJS exports for bundled charcode define checks', () => {
-        const outDir = '/tmp/shibik-test';
+        const outDir = '/tmp/shibuk-test';
         const filePath = path.join(outDir, 'assets', 'bundle.js');
 
         const result = rewriteTextContent({
@@ -85,7 +85,7 @@ describe('rewriteTextContent', () => {
     });
 
     it('should keep Next build manifest static paths from being rebased', () => {
-        const outDir = '/tmp/shibik-test';
+        const outDir = '/tmp/shibuk-test';
         const filePath = path.join(outDir, '_next', 'static', 'build', '_buildManifest.js');
 
         const result = rewriteTextContent({
@@ -103,7 +103,7 @@ describe('rewriteTextContent', () => {
     });
 
     it('should relax fetch JSON content-type checks to allow charset suffixes', () => {
-        const outDir = '/tmp/shibik-test';
+        const outDir = '/tmp/shibuk-test';
         const filePath = path.join(outDir, 'assets', 'bundle.js');
 
         const result = rewriteTextContent({
@@ -121,7 +121,7 @@ describe('rewriteTextContent', () => {
     });
 
     it('should rewrite aliased asset paths relative to the current file', () => {
-        const outDir = '/tmp/shibik-test';
+        const outDir = '/tmp/shibuk-test';
         const filePath = path.join(outDir, 'pages', 'nested', 'entry.js');
 
         const result = rewriteTextContent({
@@ -138,7 +138,7 @@ describe('rewriteTextContent', () => {
     });
 
     it('should rewrite aliased asset paths to root-relative paths in markup files', () => {
-        const outDir = '/tmp/shibik-test';
+        const outDir = '/tmp/shibuk-test';
         const filePath = path.join(outDir, 'index.html');
 
         const result = rewriteTextContent({

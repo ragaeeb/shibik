@@ -66,19 +66,19 @@ describe('parseJsonBody', () => {
 
 describe('resolveApiMockPath', () => {
     it('should resolve api paths under output directory', () => {
-        const outDir = '/tmp/shibik-test';
+        const outDir = '/tmp/shibuk-test';
         const resolved = resolveApiMockPath(outDir, '/api/session/start');
         expect(resolved).toBe(path.join(outDir, 'api', 'session', 'start', '__default__.json'));
     });
 
     it('should include a query-specific file when a search string is present', () => {
-        const outDir = '/tmp/shibik-test';
+        const outDir = '/tmp/shibuk-test';
         const resolved = resolveApiMockPath(outDir, '/api/session/start', '?mode=demo');
         expect(resolved).toMatch(/\/api\/session\/start\/__query_[a-f0-9]{12}\.json$/);
     });
 
     it('should canonicalize decoded graph paths to encoded filesystem paths', () => {
-        const outDir = '/tmp/shibik-test';
+        const outDir = '/tmp/shibuk-test';
         const resolved = resolveApiMockPath(outDir, '/v3/api/graphql/v1/v3/feed/fr-FR>fr-INT');
         expect(resolved).toBe(
             path.join(outDir, 'v3', 'api', 'graphql', 'v1', 'v3', 'feed', 'fr-FR>fr-INT', '__default__.json'),
@@ -86,21 +86,21 @@ describe('resolveApiMockPath', () => {
     });
 
     it('should return null for path traversal', () => {
-        const outDir = '/tmp/shibik-test';
+        const outDir = '/tmp/shibuk-test';
         const resolved = resolveApiMockPath(outDir, '/../secrets.txt');
         expect(resolved).toBe(null);
     });
 
     it('should return null for sibling traversal that shares the output prefix', () => {
-        const outDir = '/tmp/shibik-test';
-        const resolved = resolveApiMockPath(outDir, '/../shibik-test-other/secrets.txt');
+        const outDir = '/tmp/shibuk-test';
+        const resolved = resolveApiMockPath(outDir, '/../shibuk-test-other/secrets.txt');
         expect(resolved).toBe(null);
     });
 });
 
 describe('getApiMockLookupPaths', () => {
     it('should prefer the query-specific mock before the default mock', () => {
-        const outDir = '/tmp/shibik-test';
+        const outDir = '/tmp/shibuk-test';
         const resolved = getApiMockLookupPaths(outDir, '/api/session/start', '?mode=demo');
         expect(resolved[0]).toMatch(/__query_[a-f0-9]{12}\.json$/);
         expect(resolved[1]).toBe(path.join(outDir, 'api', 'session', 'start', '__default__.json'));

@@ -21,7 +21,7 @@ describe('startStaticServer', () => {
     });
 
     it('should serve query-specific api mocks with encoded path segments', async () => {
-        const outDir = mkdtempSync(path.join(tmpdir(), 'shibik-local-server-'));
+        const outDir = mkdtempSync(path.join(tmpdir(), 'shibuk-local-server-'));
         tempDirs.push(outDir);
 
         const urlStr =
@@ -44,7 +44,7 @@ describe('startStaticServer', () => {
     });
 
     it('should serve exr textures with the correct content type', async () => {
-        const outDir = mkdtempSync(path.join(tmpdir(), 'shibik-local-server-'));
+        const outDir = mkdtempSync(path.join(tmpdir(), 'shibuk-local-server-'));
         tempDirs.push(outDir);
 
         const filePath = path.join(outDir, 'textures', 'hdr.exr');
@@ -59,7 +59,7 @@ describe('startStaticServer', () => {
     });
 
     it('should serve hdr textures with the correct content type', async () => {
-        const outDir = mkdtempSync(path.join(tmpdir(), 'shibik-local-server-'));
+        const outDir = mkdtempSync(path.join(tmpdir(), 'shibuk-local-server-'));
         tempDirs.push(outDir);
 
         const filePath = path.join(outDir, 'textures', 'sky.hdr');
