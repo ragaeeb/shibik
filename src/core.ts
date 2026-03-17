@@ -18,6 +18,7 @@ import {
   saveCapturedEntryHtml,
   writeLinesFile,
 } from "@/files.js";
+import { isLikelyHtml } from "@/html.js";
 import { log } from "@/logger.js";
 import {
   mirrorEntryDirFolders,
@@ -58,11 +59,8 @@ const fetchEntryHtml = async (urlStr: string, config: Config, withCookies: boole
     }
 
     const contentType = response.headers.get("content-type") ?? "";
-    if (!contentType.toLowerCase().includes("text/html")) {
-      return "";
-    }
-
-    return await response.text();
+    const body = await response.text();
+    return isLikelyHtml(contentType, body) ? body : "";
   } catch {
     return "";
   } finally {

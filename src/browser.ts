@@ -7,7 +7,9 @@ import {
   type InteractionCandidate,
 } from "@/browser-interactions.js";
 import { persistCapturedResponse } from "@/captured-responses.js";
+import { isLikelyHtml } from "@/html.js";
 import { log } from "@/logger.js";
+import { stripUnsafeRequestHeaders } from "@/request-headers.js";
 import { startStaticServer } from "@/local-server.js";
 import { sleep } from "@/timing.js";
 import type { CaptureMeta, CaptureResult, Config } from "@/types.js";
@@ -71,25 +73,6 @@ const trackPendingTask = (pending: Set<Promise<void>>, task: Promise<void>) => {
   void task.finally(() => {
     pending.delete(task);
   });
-};
-
-const stripUnsafeHeaders = (headers: Record<string, string>) => {
-  const blocked = new Set([
-    "accept-encoding",
-    "connection",
-    "content-length",
-    "cookie",
-    "host",
-  ]);
-
-  const entries = Object.entries(headers).filter(
-    ([key, value]) =>
-      Boolean(value) &&
-      !key.startsWith(":") &&
-      !blocked.has(key.toLowerCase()),
-  );
-
-  return Object.fromEntries(entries);
 };
 
 const shouldSkipApiResponse = (
@@ -450,11 +433,8 @@ const fetchDocumentHtml = async (
     }
 
     const contentType = response.headers.get("content-type") ?? "";
-    if (!contentType.toLowerCase().includes("text/html")) {
-      return "";
-    }
-
-    return await response.text();
+    const body = await response.text();
+    return isLikelyHtml(contentType, body) ? body : "";
   } catch {
     return "";
   } finally {
@@ -471,8 +451,9 @@ const runCaptureNavigation = async (page: Page, config: Config) => {
     });
     if (response) {
       const contentType = response.headers()["content-type"] ?? "";
-      if (contentType.toLowerCase().includes("text/html")) {
-        documentHtml = await response.text().catch(() => "");
+      const body = await response.text().catch(() => "");
+      if (isLikelyHtml(contentType, body)) {
+        documentHtml = body;
       }
     }
   } catch (error: unknown) {
@@ -511,7 +492,7 @@ const attachCaptureListeners = (
       return;
     }
 
-    requestHeaders.set(urlStr, stripUnsafeHeaders(request.headers()));
+    requestHeaders.set(urlStr, stripUnsafeRequestHeaders(request.headers()));
   });
 
   page.on("response", (response) => {

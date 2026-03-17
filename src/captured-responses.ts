@@ -4,6 +4,7 @@ import type { HTTPResponse } from "puppeteer";
 
 import { isApiCandidate } from "@/api-mocks.js";
 import { ensureDir } from "@/files.js";
+import { getHeaderValue, hasRangeRequestHeaders } from "@/request-headers.js";
 import { mapUrlToLocalPath } from "@/site-paths.js";
 import { looksLikeAssetUrl, shouldSkipUrl } from "@/url.js";
 
@@ -37,34 +38,70 @@ const hasPersistableContentType = (contentType: string) => {
   );
 };
 
-const shouldPersistCapturedResponse = (response: HTTPResponse, originHost: string) => {
-  const urlStr = response.url();
+type CapturedResponseMeta = {
+  method: string;
+  originHost: string;
+  requestHeaders: Record<string, string>;
+  resourceType: string;
+  responseHeaders: Record<string, string>;
+  status: number;
+  urlStr: string;
+};
+
+export const shouldPersistCapturedResponseMeta = ({
+  method,
+  originHost,
+  requestHeaders,
+  resourceType,
+  responseHeaders,
+  status,
+  urlStr,
+}: CapturedResponseMeta) => {
   if (shouldSkipUrl(urlStr) || isApiCandidate(urlStr, originHost)) {
     return false;
   }
 
-  const request = response.request();
-  if (request.method() !== "GET") {
+  if (method !== "GET") {
     return false;
   }
 
-  const status = response.status();
   if (status < 200 || status >= 300) {
     return false;
   }
 
-  const resourceType = request.resourceType();
+  if (status === 206 || getHeaderValue(responseHeaders, "content-range")) {
+    return false;
+  }
+
+  if (hasRangeRequestHeaders(requestHeaders)) {
+    return false;
+  }
+
   if (resourceType === "document" || resourceType === "xhr" || resourceType === "fetch") {
     return false;
   }
 
-  const contentType = response.headers()["content-type"] ?? "";
+  const contentType = getHeaderValue(responseHeaders, "content-type");
   if (contentType.toLowerCase().includes("text/html")) {
     return false;
   }
 
   return PERSISTABLE_RESOURCE_TYPES.has(resourceType) || hasPersistableContentType(contentType)
     || looksLikeAssetUrl(urlStr, originHost, true);
+};
+
+const shouldPersistCapturedResponse = (response: HTTPResponse, originHost: string) => {
+  const request = response.request();
+
+  return shouldPersistCapturedResponseMeta({
+    method: request.method(),
+    originHost,
+    requestHeaders: request.headers(),
+    resourceType: request.resourceType(),
+    responseHeaders: response.headers(),
+    status: response.status(),
+    urlStr: response.url(),
+  });
 };
 
 export const writeCapturedResponse = async (

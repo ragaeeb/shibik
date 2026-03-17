@@ -9,6 +9,7 @@ import {
   pathExists,
 } from "@/files.js";
 import { log } from "@/logger.js";
+import { stripUnsafeRequestHeaders } from "@/request-headers.js";
 import { mapUrlToLocalPath } from "@/site-paths.js";
 import { sleep } from "@/timing.js";
 import type { Config, DownloadResult, DownloadSummary } from "@/types.js";
@@ -56,7 +57,9 @@ const buildRequestHeaders = (urlStr: string, config: Config, originHost: string)
   }
 
   const captured = getCapturedHeaders(urlStr, config, originHost);
-  const merged = captured ? { ...baseHeaders, ...captured } : baseHeaders;
+  const merged = captured
+    ? { ...baseHeaders, ...stripUnsafeRequestHeaders(captured) }
+    : baseHeaders;
   merged["User-Agent"] = config.userAgent;
 
   if (baseHeaders.Cookie) {
@@ -91,12 +94,36 @@ const hasStoredApiMock = async (urlStr: string, outDir: string, originHost: stri
   return false;
 };
 
-const validateDownloadResponse = (absPath: string, response: Response) => {
-  const contentType = response.headers.get("content-type") || "";
+type DownloadResponseMeta = {
+  absPath: string;
+  contentRange: string;
+  contentType: string;
+  status: number;
+};
+
+export const validateDownloadResponseMeta = ({
+  absPath,
+  contentRange,
+  contentType,
+  status,
+}: DownloadResponseMeta) => {
+  if (status === 206 || contentRange) {
+    throw new Error("Partial content response");
+  }
+
   const ext = path.extname(absPath).toLowerCase();
   if (contentType.includes("text/html") && ext && !htmlContentExtensions.has(ext)) {
     throw new Error(`HTML response for ${ext || "asset"}`);
   }
+};
+
+const validateDownloadResponse = (absPath: string, response: Response) => {
+  validateDownloadResponseMeta({
+    absPath,
+    contentRange: response.headers.get("content-range") || "",
+    contentType: response.headers.get("content-type") || "",
+    status: response.status,
+  });
 };
 
 const writeDownloadResponse = async (absPath: string, response: Response) => {

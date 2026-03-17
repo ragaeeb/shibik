@@ -157,4 +157,37 @@ describe("downloadUrl", () => {
     expect(result).toBe("failed");
     expect(Date.now() - startedAt).toBeLessThan(2_000);
   });
+
+  it("should reject partial content responses for full asset downloads", async () => {
+    const server = Bun.serve({
+      fetch(req) {
+        if (new URL(req.url).pathname === "/assets/demo.mp4") {
+          return new Response("partial-video", {
+            headers: {
+              "Content-Range": "bytes 0-11/100",
+              "Content-Type": "video/mp4",
+            },
+            status: 206,
+          });
+        }
+
+        return new Response("missing", { status: 404 });
+      },
+      port: 0,
+    });
+    servers.push(server);
+
+    const origin = server.url.origin.replace("localhost", "127.0.0.1");
+    const outDir = mkdtempSync(path.join(tmpdir(), "shibik-download-"));
+    tempDirs.push(outDir);
+
+    const result = await downloadUrl(
+      `${origin}/assets/demo.mp4`,
+      makeConfig(origin, outDir),
+      outDir,
+      new URL(origin).host,
+    );
+
+    expect(result).toBe("failed");
+  });
 });
