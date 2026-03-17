@@ -119,4 +119,38 @@ describe('rewriteTextContent', () => {
             'String(response.headers.get("Content-Type")||"").includes("application/json")',
         );
     });
+
+    it('should rewrite aliased asset paths relative to the current file', () => {
+        const outDir = '/tmp/shibik-test';
+        const filePath = path.join(outDir, 'pages', 'nested', 'entry.js');
+
+        const result = rewriteTextContent({
+            aliasPairs: [['logo.svg', 'assets/images/logo.svg']],
+            content: 'const logo = "/logo.svg";',
+            filePath,
+            knownHosts: new Set<string>(['cdn.example.com']),
+            originHost: 'example.com',
+            outDir,
+        });
+
+        expect(result.content).toContain('"../../assets/images/logo.svg"');
+        expect(result.content).not.toContain('"/logo.svg"');
+    });
+
+    it('should rewrite aliased asset paths to root-relative paths in markup files', () => {
+        const outDir = '/tmp/shibik-test';
+        const filePath = path.join(outDir, 'index.html');
+
+        const result = rewriteTextContent({
+            aliasPairs: [['runtime.js', '_next/static/runtime.js']],
+            content: '<script src="/runtime.js"></script>',
+            filePath,
+            knownHosts: new Set<string>(),
+            originHost: 'example.com',
+            outDir,
+        });
+
+        expect(result.content).toContain('src="/_next/static/runtime.js"');
+        expect(result.content).not.toContain('src="/runtime.js"');
+    });
 });

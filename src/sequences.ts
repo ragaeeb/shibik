@@ -2,6 +2,7 @@ import path from 'node:path';
 
 import { TEXT_EXTENSIONS } from '@/constants.js';
 import { readTextFile, walkDir } from '@/files.js';
+import { log } from '@/logger.js';
 
 type SequenceEntry = {
     digits: number;
@@ -38,7 +39,12 @@ const detectTextHint = async (outDir: string, predicate: (content: string) => bo
             if (predicate(await readTextFile(file))) {
                 return true;
             }
-        } catch {}
+        } catch (error) {
+            log(
+                'WARN',
+                `Skipping unreadable file during sequence hint detection: ${file} (${error instanceof Error ? error.message : String(error)})`,
+            );
+        }
     }
 
     return false;

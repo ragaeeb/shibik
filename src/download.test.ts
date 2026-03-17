@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { downloadUrl, getWorkerCount } from '@/download.js';
+import { downloadAllWithVerification, downloadUrl, getWorkerCount } from '@/download.js';
 import type { Config } from '@/types.js';
 
 const makeConfig = (origin: string, outDir: string): Config => {
@@ -188,5 +188,23 @@ describe('downloadUrl', () => {
         );
 
         expect(result).toBe('failed');
+    });
+
+    it('should normalize localhost urls during missing-download verification', async () => {
+        const origin = 'https://example.com';
+        const outDir = mkdtempSync(path.join(tmpdir(), 'shibik-download-'));
+        tempDirs.push(outDir);
+
+        await Bun.write(path.join(outDir, 'assets', 'demo.png'), 'image-data');
+
+        const summary = await downloadAllWithVerification(
+            ['http://localhost:3000/assets/demo.png'],
+            makeConfig(origin, outDir),
+            outDir,
+            new URL(origin).host,
+        );
+
+        expect(summary.failed).toBe(0);
+        expect(summary.failedUrls).toEqual([]);
     });
 });

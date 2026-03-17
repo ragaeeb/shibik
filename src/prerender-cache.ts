@@ -155,13 +155,14 @@ const persistPanelFallbackMocks = async (html: string, origin: string, outDir: s
 
 export const extractPrerenderRequestUrls = (html: string, origin: string) => {
     const urls = new Set<string>();
+    const entries = extractPrerenderCacheEntries(html);
 
-    for (const [requestPath] of extractPrerenderCacheEntries(html)) {
+    for (const [requestPath] of entries) {
         urls.add(new URL(requestPath, origin).toString());
     }
 
     const locale = extractHtmlLang(html);
-    for (const [, value] of extractPrerenderCacheEntries(html)) {
+    for (const [, value] of entries) {
         for (const inlineContentUrl of collectInlineContentFallbackUrls(value, origin, locale)) {
             urls.add(inlineContentUrl);
         }
@@ -179,8 +180,10 @@ export const persistStoredPageConfigFallbackMocks = async (outDir: string, origi
         try {
             const value = JSON.parse(await Bun.file(filePath).text()) as unknown;
             for (const inlineContentUrl of collectInlineContentFallbackUrls(value, origin, 'en-us')) {
-                fallbackUrls.add(inlineContentUrl);
-                await storeApiMockValue(inlineContentUrl, EMPTY_INLINE_CONTENT_RESPONSE, outDir);
+                const stored = await storeApiMockValue(inlineContentUrl, EMPTY_INLINE_CONTENT_RESPONSE, outDir);
+                if (stored) {
+                    fallbackUrls.add(inlineContentUrl);
+                }
             }
         } catch {
             // Ignore incomplete page config artifacts during best-effort fallback synthesis.

@@ -34,7 +34,6 @@ const assetFilenameRegex =
     /(['"`])([a-z0-9][a-z0-9._-]{2,}\.(?:avif|webp|png|jpe?g|gif|svg|mp3|m4a|ogg|wav|mp4|webm|glb|gltf|bin|ktx2|drc|hdr|exr|json|riv|wasm|js|mjs|css))(?:[?#][^'"`]*)?(?=\1)/gi;
 const cssUrlRegex = /url\(([^)]+)\)/gi;
 const srcsetRegex = /\bsrcset\s*=\s*(['"])([^'"]+)\1/gi;
-const imageSetRegex = /\bimage-set\s*\(([^)]+)\)/gi;
 
 const createEmbeddedContext = ({
     content,
@@ -44,8 +43,8 @@ const createEmbeddedContext = ({
 }: EmbeddedContentInput): EmbeddedContext => {
     const originUrl = new URL(origin);
     const normalizedDir = fileRelativeDir.replace(/\\/g, '/');
-    const preferNextStatic =
-        normalizedDir.includes('_next/static/') && /__BUILD_MANIFEST|__SSG_MANIFEST/i.test(content);
+    const isNextStaticDir = normalizedDir === '_next/static' || normalizedDir.startsWith('_next/static/');
+    const preferNextStatic = isNextStaticDir && /__BUILD_MANIFEST|__SSG_MANIFEST/i.test(content);
     return {
         appBase: new URL(`${origin}${getEntryDir(entryPath)}`),
         base: new URL(`${origin}/${fileRelativeDir ? `${fileRelativeDir}/` : ''}`),
@@ -224,11 +223,12 @@ const collectCssUrls = (content: string, context: EmbeddedContext) => {
             continue;
         }
 
-        const resolved =
-            candidate.startsWith('./') || candidate.startsWith('../') || candidate.includes('/')
-                ? resolveCandidateUrl(candidate, context)
-                : null;
-        addResolvedUrl(resolved, context);
+        const hasScheme = /^[a-z][a-z0-9+.-]*:/i.test(candidate);
+        const isBareLocalAsset =
+            candidate.includes('.') && !hasScheme && !candidate.startsWith('/') && !candidate.startsWith('//');
+        if (candidate.startsWith('./') || candidate.startsWith('../') || candidate.includes('/') || isBareLocalAsset) {
+            addResolvedUrl(resolveCandidateUrl(candidate, context), context);
+        }
     }
 };
 
@@ -237,6 +237,117 @@ const collectListUrls = (entries: string[], context: EmbeddedContext) => {
         const candidate = normalizeEmbeddedUrl(entry);
         addResolvedUrl(resolveCandidateUrl(candidate, context), context);
     }
+};
+
+const extractBalancedFunctionBodies = (content: string, functionName: string) => {
+    const bodies: string[] = [];
+    const lower = content.toLowerCase();
+    const needle = `${functionName.toLowerCase()}(`;
+    let startIndex = 0;
+
+    while (startIndex < lower.length) {
+        const matchIndex = lower.indexOf(needle, startIndex);
+        if (matchIndex < 0) {
+            break;
+        }
+
+        let cursor = matchIndex + needle.length;
+        let depth = 1;
+        let quote: '"' | "'" | '`' | null = null;
+        const bodyStart = cursor;
+
+        while (cursor < content.length) {
+            const char = content[cursor];
+            if (quote) {
+                if (char === '\\') {
+                    cursor += 2;
+                    continue;
+                }
+
+                if (char === quote) {
+                    quote = null;
+                }
+                cursor++;
+                continue;
+            }
+
+            if (char === '"' || char === "'" || char === '`') {
+                quote = char;
+                cursor++;
+                continue;
+            }
+
+            if (char === '(') {
+                depth++;
+                cursor++;
+                continue;
+            }
+
+            if (char === ')') {
+                depth--;
+                if (depth === 0) {
+                    bodies.push(content.slice(bodyStart, cursor));
+                    cursor++;
+                    break;
+                }
+            }
+
+            cursor++;
+        }
+
+        startIndex = cursor;
+    }
+
+    return bodies;
+};
+
+const splitTopLevelList = (value: string) => {
+    const parts: string[] = [];
+    let depth = 0;
+    let quote: '"' | "'" | '`' | null = null;
+    let segmentStart = 0;
+
+    for (let index = 0; index < value.length; index++) {
+        const char = value[index];
+        if (quote) {
+            if (char === '\\') {
+                index++;
+                continue;
+            }
+
+            if (char === quote) {
+                quote = null;
+            }
+            continue;
+        }
+
+        if (char === '"' || char === "'" || char === '`') {
+            quote = char;
+            continue;
+        }
+
+        if (char === '(') {
+            depth++;
+            continue;
+        }
+
+        if (char === ')') {
+            depth = Math.max(0, depth - 1);
+            continue;
+        }
+
+        if (char === ',' && depth === 0) {
+            parts.push(value.slice(segmentStart, index).trim());
+            segmentStart = index + 1;
+        }
+    }
+
+    const trailing = value.slice(segmentStart).trim();
+    if (trailing) {
+        parts.push(trailing);
+    }
+
+    return parts;
 };
 
 const collectSrcsetUrls = (content: string, context: EmbeddedContext) => {
@@ -250,11 +361,11 @@ const collectSrcsetUrls = (content: string, context: EmbeddedContext) => {
 };
 
 const collectImageSetUrls = (content: string, context: EmbeddedContext) => {
-    for (const match of content.matchAll(imageSetRegex)) {
-        const entries = (match[1] ?? '').split(',').map((part) => part.trim());
+    for (const body of extractBalancedFunctionBodies(content, 'image-set')) {
+        const entries = splitTopLevelList(body);
         const urls = entries.map((entry) => {
-            const entryMatch = entry.match(/url\(([^)]+)\)/i);
-            return entryMatch ? entryMatch[1] : (entry.split(/\s+/)[0] ?? '');
+            const [urlBody] = extractBalancedFunctionBodies(entry, 'url');
+            return urlBody ?? entry.split(/\s+/)[0] ?? '';
         });
         collectListUrls(urls, context);
     }

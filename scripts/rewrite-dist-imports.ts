@@ -1,7 +1,8 @@
 export const rewriteImports = (source: string) => {
-  return source
-    .replace(/from\s+(["'])@\//g, 'from $1./')
-    .replace(/import\s+(["'])@\//g, 'import $1./');
+    return source
+        .replace(/from\s+(["'])@\//g, 'from $1./')
+        .replace(/import\s+(["'])@\//g, 'import $1./')
+        .replace(/\bimport\s*\(\s*(["'])@\//g, 'import($1./');
 };
 
 if (import.meta.main) {

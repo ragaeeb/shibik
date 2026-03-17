@@ -18,6 +18,16 @@ describe('normalizeEmbeddedUrl', () => {
     it('should reject embedded javascript mime fragments', () => {
         expect(normalizeEmbeddedUrl('application/javascript;base64,AAAA')).toBe('');
     });
+
+    it('should preserve signed query parameters', () => {
+        expect(
+            normalizeEmbeddedUrl(
+                'https://cdn.example.com/file.png?X-Amz-Signature=abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrstuvwxyz0123456789',
+            ),
+        ).toBe(
+            'https://cdn.example.com/file.png?X-Amz-Signature=abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrstuvwxyz0123456789',
+        );
+    });
 });
 
 describe('remapLocalhostUrl', () => {
@@ -59,6 +69,7 @@ describe('hasAssetExtension', () => {
         expect(hasAssetExtension('https://example.com/assets/app.css?v=1')).toBe(true);
         expect(hasAssetExtension('https://example.com/textures/sky.exr')).toBe(true);
         expect(hasAssetExtension('https://example.com/textures/sky.hdr')).toBe(true);
+        expect(hasAssetExtension('https://example.com/assets/app.cssjunk')).toBe(false);
         expect(hasAssetExtension('https://example.com/brand/demo')).toBe(false);
     });
 });

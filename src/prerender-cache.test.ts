@@ -40,6 +40,7 @@ describe('persistPrerenderCacheMocks', () => {
         expect(await Bun.file(queryPath!).json()).toEqual({ data: { ok: true } });
 
         const assetLookup = getApiMockLookupPaths(outDir, '/assets/app.js', '?v=1');
+        expect(assetLookup.length).toBeGreaterThan(0);
         expect(await Bun.file(assetLookup[0]!).exists()).toBe(false);
     });
 

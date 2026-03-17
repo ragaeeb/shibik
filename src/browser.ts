@@ -72,6 +72,12 @@ const trackPendingTask = (pending: Set<Promise<void>>, task: Promise<void>) => {
     });
 };
 
+export const drainPendingTasks = async (pending: Set<Promise<void>>) => {
+    while (pending.size > 0) {
+        await Promise.allSettled(Array.from(pending));
+    }
+};
+
 const shouldSkipApiResponse = (
     urlStr: string,
     responseHeaders: Record<string, string>,
@@ -516,30 +522,33 @@ const attachCaptureListeners = (
 
 export const captureUrls = async (config: Config): Promise<CaptureResult> => {
     log('INFO', `Capture start: ${config.url}`);
-    const browser = await puppeteer.launch({
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
-        headless: config.headless,
-    });
-    const page = await browser.newPage();
     const urls = new Map<string, CaptureMeta>();
     const hosts = new Set<string>();
     const requestHeaders = new Map<string, Record<string, string>>();
     const capturedApi = new Set<string>();
     const pendingTasks = new Set<Promise<void>>();
-
-    attachCaptureListeners(page, config, urls, hosts, requestHeaders, capturedApi, pendingTasks);
+    let browser: Awaited<ReturnType<typeof puppeteer.launch>> | null = null;
 
     try {
+        browser = await puppeteer.launch({
+            args: ['--no-sandbox', '--disable-setuid-sandbox'],
+            headless: config.headless,
+        });
+        const page = await browser.newPage();
+
+        attachCaptureListeners(page, config, urls, hosts, requestHeaders, capturedApi, pendingTasks);
         await configurePage(page, config);
         const { landingUrl, documentHtml } = await runCaptureNavigation(page, config);
-        await Promise.allSettled(Array.from(pendingTasks));
+        await drainPendingTasks(pendingTasks);
         const metadata = await collectCaptureMetadata(page, landingUrl, documentHtml);
         const urlList = Array.from(urls.keys());
 
         log('INFO', `Captured ${urlList.length} URLs.`);
         return { hosts, meta: urls, requestHeaders, urls: urlList, ...metadata };
     } finally {
-        await browser.close();
+        if (browser) {
+            await browser.close();
+        }
     }
 };
 
@@ -564,15 +573,17 @@ const navigateForMissingAssets = async (page: Page, targetUrl: string, config: C
 };
 
 export const findMissingAssets = async (outDir: string, config: Config): Promise<Set<string>> => {
-    const server = startStaticServer(outDir);
-    const browser = await puppeteer.launch({
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
-        headless: config.headless,
-    });
     const missing = new Set<string>();
-    const baseUrl = server.url.origin;
+    let browser: Awaited<ReturnType<typeof puppeteer.launch>> | null = null;
+    let server: Bun.Server<undefined> | null = null;
 
     try {
+        browser = await puppeteer.launch({
+            args: ['--no-sandbox', '--disable-setuid-sandbox'],
+            headless: config.headless,
+        });
+        server = startStaticServer(outDir);
+        const baseUrl = server.url.origin;
         const page = await browser.newPage();
         await configurePage(page, config);
 
@@ -592,8 +603,15 @@ export const findMissingAssets = async (outDir: string, config: Config): Promise
 
         await navigateForMissingAssets(page, new URL(config.entryPath, server.url).toString(), config);
     } finally {
-        await browser.close();
-        await server.stop(true);
+        try {
+            if (browser) {
+                await browser.close();
+            }
+        } finally {
+            if (server) {
+                await server.stop(true);
+            }
+        }
     }
 
     return missing;

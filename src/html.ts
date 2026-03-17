@@ -10,3 +10,7 @@ export const isLikelyHtml = (contentType: string, body: string) => {
     const normalized = sample.trimStart().replace(/^\uFEFF/, '');
     return HTML_SNIFF_RE.test(normalized);
 };
+
+export const isChallengePageHtml = (html: string) => {
+    return /cloudflare|attention required|captcha/i.test(html);
+};

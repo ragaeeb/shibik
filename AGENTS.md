@@ -8,7 +8,6 @@ This repository ships `shibik`, a CLI for capturing and localizing complex websi
 - Keep the CLI entrypoint thin in `src/cli.ts`.
 - Put reusable parsing and utility logic in focused modules such as `src/args.ts`, `src/url.ts`, `src/logger.ts`, and `src/types.ts`.
 - Keep the high-level orchestration in `src/core.ts`.
-- Tests live in `test/`.
 - Published output is generated into `dist/`.
 - CI and release automation live in `.github/workflows/`.
 

@@ -55,7 +55,6 @@ export const normalizeEmbeddedUrl = (value: string) => {
     cleaned = cleaned.replace(/[),;]+$/g, '');
     cleaned = cleaned.replace(/\\+$/g, '');
     cleaned = cleaned.replace(/\s+/g, '');
-    cleaned = cleaned.replace(/([?&][^=]{0,40}=[^&]{80,})$/g, '');
     if (cleaned.includes('<') || cleaned.includes('>')) return '';
     if (/https?:\/\/.*https?:\/\//i.test(cleaned)) return '';
     if (/%22,%22|","/i.test(cleaned)) return '';
@@ -88,7 +87,7 @@ export const remapLocalhostUrl = (urlStr: string, origin: string) => {
 
 export const hasAssetExtension = (urlStr: string) => {
     const lower = urlStr.toLowerCase();
-    return /\.(avif|webp|png|jpg|jpeg|gif|svg|ico|apng|exr|hdr|mp4|webm|mp3|m4a|ogg|wav|glb|gltf|bin|ktx2|drc|riv|wasm|js|mjs|css|json|webmanifest|woff2?|ttf|otf|map)(\\?|#|$)/.test(
+    return /\.(avif|webp|png|jpg|jpeg|gif|svg|ico|apng|exr|hdr|mp4|webm|mp3|m4a|ogg|wav|glb|gltf|bin|ktx2|drc|riv|wasm|js|mjs|css|json|webmanifest|woff2?|ttf|otf|map)(\?|#|$)/.test(
         lower,
     );
 };

@@ -55,7 +55,14 @@ const mapMissingToRemote = (
         return null;
     }
 
-    const missing = new URL(missingUrl);
+    let missing: URL;
+    try {
+        missing = new URL(missingUrl);
+    } catch {
+        log('WARN', `Skipping malformed recovery URL: ${missingUrl}`);
+        return null;
+    }
+
     const pathname = missing.pathname;
     const search = missing.search;
     const externalIndex = pathname.indexOf('/_external/');
@@ -170,7 +177,12 @@ const copyResolvedMissing = async (
                 await ensureDir(path.dirname(targetPath));
                 await Bun.write(targetPath, sourceFile);
                 break;
-            } catch {}
+            } catch (error) {
+                log(
+                    'WARN',
+                    `Failed to copy recovered asset ${urlStr} -> ${targetPath}: ${error instanceof Error ? (error.stack ?? error.message) : String(error)}`,
+                );
+            }
         }
     }
 };

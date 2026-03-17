@@ -2,6 +2,8 @@ import path from 'node:path';
 
 import { readTextFile, walkDir } from '@/files.js';
 
+const MAX_SEQUENCE_FRAMES = 10_000;
+
 const isObjectRecord = (value: unknown): value is Record<string, unknown> => {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
 };
@@ -29,7 +31,7 @@ const looksLikeAssetPath = (value: string) => {
     }
 
     const extMatch = lower.match(/\.([a-z0-9]{2,8})(\?|#|$)/);
-    return Boolean(extMatch && value.includes('/'));
+    return Boolean(extMatch);
 };
 
 const addAssetPath = (asset: string, assets: Set<string>) => {
@@ -82,7 +84,8 @@ const tryAddSequenceAssets = (
     }
 
     addAssetVariants(basePath, variants, assets);
-    for (let index = 0; index < Math.max(0, Math.floor(frameCount)); index++) {
+    const maxFrames = Math.max(0, Math.min(MAX_SEQUENCE_FRAMES, Math.floor(frameCount)));
+    for (let index = 0; index < maxFrames; index++) {
         addAssetVariants(`${basePath}.n${index}`, variants, assets);
     }
 

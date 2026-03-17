@@ -14,7 +14,7 @@ import {
     saveCapturedEntryHtml,
     writeLinesFile,
 } from '@/files.js';
-import { isLikelyHtml } from '@/html.js';
+import { isChallengePageHtml, isLikelyHtml } from '@/html.js';
 import { log } from '@/logger.js';
 import { mirrorEntryDirFolders, mirrorLeafToParent, mirrorLeafToRoot, mirrorRootToEntry } from '@/mirror.js';
 import {
@@ -25,7 +25,7 @@ import {
 import { runLocalRecovery } from '@/recovery.js';
 import { rewritePaths } from '@/rewrite.js';
 import { writeRuntimeShim } from '@/runtime-shim.js';
-import type { Config } from '@/types.js';
+import type { CliArgs, Config } from '@/types.js';
 
 const writeCloneArtifact = (outDir: string, name: string, lines: string[]) => {
     return writeLinesFile(path.join(outDir, '.clone', name), lines);
@@ -144,7 +144,17 @@ const downloadDiscoveredUrls = async (
 };
 
 export const main = async (argv = process.argv.slice(2)) => {
-    const rawArgs = parseArgs(argv);
+    let rawArgs: CliArgs;
+    try {
+        rawArgs = parseArgs(argv);
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error(`Error: ${message}`);
+        printHelp();
+        process.exitCode = 1;
+        return;
+    }
+
     if (rawArgs.help) {
         printHelp();
         return;
@@ -228,11 +238,15 @@ export const main = async (argv = process.argv.slice(2)) => {
     let entryHtml = capture.documentHtml || capture.finalHtml;
     if (entryHtml.includes('<canvas')) {
         const fetchedWithCookies = await fetchEntryHtml(entryFetchUrl, config, true);
-        if (fetchedWithCookies && !fetchedWithCookies.includes('<canvas')) {
+        if (fetchedWithCookies && !fetchedWithCookies.includes('<canvas') && !isChallengePageHtml(fetchedWithCookies)) {
             entryHtml = fetchedWithCookies;
         } else {
             const fetchedWithoutCookies = await fetchEntryHtml(entryFetchUrl, config, false);
-            if (fetchedWithoutCookies && !fetchedWithoutCookies.includes('<canvas')) {
+            if (
+                fetchedWithoutCookies &&
+                !fetchedWithoutCookies.includes('<canvas') &&
+                !isChallengePageHtml(fetchedWithoutCookies)
+            ) {
                 entryHtml = fetchedWithoutCookies;
             }
         }

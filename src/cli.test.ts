@@ -59,6 +59,10 @@ describe('parseArgs', () => {
         );
     });
 
+    it('should treat negative numeric tokens as option values before validation', () => {
+        expect(() => parseArgs(['https://example.com', '--timeout', '-1'])).toThrow('Invalid value for --timeout: -1');
+    });
+
     it('should reject unknown flags', () => {
         expect(() => parseArgs(['https://example.com', '--wat'])).toThrow('Unknown option: --wat');
     });

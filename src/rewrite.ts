@@ -352,7 +352,11 @@ export const rewritePaths = async (outDir: string, originHost: string, knownHost
         let content: string;
         try {
             content = await readTextFile(file);
-        } catch {
+        } catch (error) {
+            log(
+                'WARN',
+                `Skipping unreadable file during rewrite: ${path.relative(outDir, file)} (${error instanceof Error ? error.message : String(error)})`,
+            );
             continue;
         }
 

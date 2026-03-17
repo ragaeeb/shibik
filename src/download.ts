@@ -267,11 +267,12 @@ export const downloadAll = async (
     return { downloaded, failed, failedUrls, skipped };
 };
 
-export const collectMissingDownloads = async (urls: string[], outDir: string, originHost: string) => {
+export const collectMissingDownloads = async (urls: string[], outDir: string, originHost: string, origin: string) => {
     const missing: string[] = [];
     const unique = Array.from(new Set(urls));
 
-    for (const urlStr of unique) {
+    for (const rawUrl of unique) {
+        const urlStr = remapLocalhostUrl(rawUrl, origin);
         if (shouldSkipUrl(urlStr)) {
             continue;
         }
@@ -308,17 +309,17 @@ export const downloadAllWithVerification = async (
     originHost: string,
 ) => {
     const summary = await downloadAll(urls, config, outDir, originHost);
-    let missing = await collectMissingDownloads(urls, outDir, originHost);
+    let missing = await collectMissingDownloads(urls, outDir, originHost, config.origin);
     if (missing.length === 0) {
         return { ...summary, failed: 0, failedUrls: [] };
     }
 
     log('INFO', `Retrying ${missing.length} missing downloads.`);
     await downloadAll(missing, config, outDir, originHost);
-    missing = await collectMissingDownloads(urls, outDir, originHost);
+    missing = await collectMissingDownloads(urls, outDir, originHost, config.origin);
     if (missing.length > 0) {
         await downloadWithBrowserFallback(missing, config, originHost);
-        missing = await collectMissingDownloads(urls, outDir, originHost);
+        missing = await collectMissingDownloads(urls, outDir, originHost, config.origin);
     }
 
     return { ...summary, failed: missing.length, failedUrls: missing };

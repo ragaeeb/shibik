@@ -112,7 +112,12 @@ const takeFlagValue = (argv: string[], index: number, inlineValue?: string): Fla
     }
 
     const next = argv[index + 1];
-    if (next === undefined || next.startsWith('-')) {
+    if (next === undefined) {
+        return { consumed: 0, value: undefined };
+    }
+
+    const isNegativeNumberValue = /^-\d+(?:\.\d+)?$/.test(next);
+    if (next.startsWith('-') && !isNegativeNumberValue) {
         return { consumed: 0, value: undefined };
     }
 

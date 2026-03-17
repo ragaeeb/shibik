@@ -400,8 +400,8 @@ export const injectRuntimeScriptTag = (html: string) => {
     return `${scriptTag}${html}`;
 };
 
-const writeRuntimeScript = async (outDir: string, aliasMaps: RuntimeAliasMaps, entryPath: string) => {
-    await writeTextFile(path.join(outDir, RUNTIME_FILE_NAME), buildRuntimeCode(aliasMaps, entryPath));
+const writeRuntimeScript = async (outDir: string, aliasMaps: RuntimeAliasMaps, entryDir: string) => {
+    await writeTextFile(path.join(outDir, RUNTIME_FILE_NAME), buildRuntimeCode(aliasMaps, entryDir));
 };
 
 const injectRuntimeScriptIntoHtmlFiles = async (outDir: string) => {

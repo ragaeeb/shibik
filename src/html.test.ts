@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 
-import { isLikelyHtml } from '@/html.js';
+import { isChallengePageHtml, isLikelyHtml } from '@/html.js';
 
 describe('isLikelyHtml', () => {
     it('should treat text/html as html regardless of body', () => {
@@ -18,5 +18,16 @@ describe('isLikelyHtml', () => {
 
     it('should ignore non-html payloads when content-type is wrong', () => {
         expect(isLikelyHtml('binary', '{"ok":true}')).toBe(false);
+    });
+});
+
+describe('isChallengePageHtml', () => {
+    it('should detect known challenge shells', () => {
+        expect(isChallengePageHtml('<html><title>Attention Required</title></html>')).toBe(true);
+        expect(isChallengePageHtml('<html><body>captcha required</body></html>')).toBe(true);
+    });
+
+    it('should ignore normal html documents', () => {
+        expect(isChallengePageHtml('<html><body><main>normal page</main></body></html>')).toBe(false);
     });
 });

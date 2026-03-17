@@ -83,6 +83,50 @@ describe('collectEmbeddedUrlsFromContent', () => {
         expect(urls).toContain('https://virtualexpodubai.com/_next/static/css/app.css');
         expect(urls).not.toContain('https://virtualexpodubai.com/static/chunks/pages/index-abc.js');
     });
+
+    it('should prefer _next static paths when the file directory is exactly _next/static', () => {
+        const content = 'self.__BUILD_MANIFEST={"/":["../../static/chunks/pages/index-abc.js"]};';
+        const urls = collectEmbeddedUrlsFromContent({
+            content,
+            entryPath: '/opportunity-district',
+            fileRelativeDir: '_next/static',
+            origin: 'https://virtualexpodubai.com',
+        });
+
+        expect(urls).toContain('https://virtualexpodubai.com/_next/static/chunks/pages/index-abc.js');
+        expect(urls).not.toContain('https://virtualexpodubai.com/static/chunks/pages/index-abc.js');
+    });
+
+    it('should parse image-set entries with nested parentheses', () => {
+        const urls = collectEmbeddedUrlsFromContent({
+            content: `
+                .hero {
+                    background-image: image-set(
+                        url("./images/hero(1).webp") 1x,
+                        url("/images/hero(2).webp") 2x
+                    );
+                }
+            `,
+            entryPath: '/brand/demo/',
+            fileRelativeDir: 'pages/demo',
+            origin: 'https://example.com',
+        });
+
+        expect(urls).toContain('https://example.com/pages/demo/images/hero(1).webp');
+        expect(urls).toContain('https://example.com/images/hero(2).webp');
+    });
+
+    it('should resolve bare css asset filenames relative to the current file', () => {
+        const urls = collectEmbeddedUrlsFromContent({
+            content: '.hero { background-image: url("bg.png"); src: url("font.woff2") format("woff2"); }',
+            entryPath: '/brand/demo/',
+            fileRelativeDir: 'pages/demo',
+            origin: 'https://example.com',
+        });
+
+        expect(urls).toContain('https://example.com/pages/demo/bg.png');
+        expect(urls).toContain('https://example.com/pages/demo/font.woff2');
+    });
 });
 
 describe('collectEmbeddedUrls', () => {
@@ -99,9 +143,16 @@ describe('collectEmbeddedUrls', () => {
             );
 
             const urls = await collectEmbeddedUrls(outDir, 'https://virtualexpodubai.com', '/opportunity-district');
-            const bad = urls.filter((url) => url.includes('/opportunity-district/static/'));
+            const bad = urls.filter(
+                (url) =>
+                    url.includes('/opportunity-district/_next/static/') ||
+                    url.includes('/opportunity-district/static/'),
+            );
             expect(bad).toEqual([]);
             expect(urls).toContain('https://virtualexpodubai.com/_next/static/chunks/pages/index-abc.js');
+            expect(
+                urls.filter((url) => url === 'https://virtualexpodubai.com/_next/static/chunks/pages/index-abc.js'),
+            ).toHaveLength(1);
         } finally {
             rmSync(outDir, { force: true, recursive: true });
         }
