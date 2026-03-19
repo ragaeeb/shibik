@@ -44,6 +44,15 @@ describe('mapLocalTestUrlToPath', () => {
             ),
         ).toBe(absPath);
     });
+
+    it('should preserve decoded spaces in asset file paths so generic static servers can resolve them', () => {
+        const { absPath } = mapUrlToLocalPath('https://ciwsimulator.com/models/rafale%20fini.glb', '/tmp/out', 'ciwsimulator.com');
+
+        expect(absPath).toBe('/tmp/out/models/rafale fini.glb');
+        expect(
+            mapLocalTestUrlToPath('http://local.test/models/rafale%20fini.glb', '/tmp/out'),
+        ).toBe('/tmp/out/models/rafale fini.glb');
+    });
 });
 
 describe('getEntryDir', () => {

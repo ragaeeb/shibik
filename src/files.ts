@@ -191,7 +191,10 @@ export const ensureServeBootstrap = async (outDir: string, entryPath: string) =>
         return;
     }
 
-    const redirectTarget = `./${relativeTarget}${entryUrl.search}${entryUrl.hash}`;
+    const directoryTarget = relativeTarget.endsWith('/index.html')
+        ? relativeTarget.slice(0, -'index.html'.length)
+        : relativeTarget;
+    const redirectTarget = `./${directoryTarget}${entryUrl.search}${entryUrl.hash}`;
     const html = `<!doctype html>
 <html lang="en">
 <head>

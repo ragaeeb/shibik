@@ -3,7 +3,7 @@ import { existsSync, lstatSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { applyCapturedEntryHtml, ensureDir, writePlaceholderForMissing } from '@/files.js';
+import { applyCapturedEntryHtml, ensureDir, ensureServeBootstrap, writePlaceholderForMissing } from '@/files.js';
 
 describe('writePlaceholderForMissing', () => {
     const tempDirs: string[] = [];
@@ -123,5 +123,27 @@ describe('applyCapturedEntryHtml', () => {
 
         const updated = await Bun.file(absPath).text();
         expect(updated).toBe(existingHtml);
+    });
+});
+
+describe('ensureServeBootstrap', () => {
+    const tempDirs: string[] = [];
+
+    afterEach(() => {
+        for (const dir of tempDirs.splice(0)) {
+            rmSync(dir, { force: true, recursive: true });
+        }
+    });
+
+    it('should redirect index-html entry paths to the directory form', async () => {
+        const outDir = mkdtempSync(path.join(tmpdir(), 'shibuk-files-'));
+        tempDirs.push(outDir);
+
+        await ensureServeBootstrap(outDir, '/apartment/index.html');
+
+        const html = await Bun.file(path.join(outDir, 'index.html')).text();
+        expect(html).toContain('url=./apartment/');
+        expect(html).toContain('location.replace("./apartment/")');
+        expect(html).not.toContain('./apartment/index.html');
     });
 });

@@ -174,15 +174,17 @@ export const buildLocalPathAliases = async (outDir: string) => {
             continue;
         }
 
-        const rootFolder = parts[0];
         const nestedFolderIndex = parts.findIndex(
-            (part, index) => index >= 2 && EXTERNAL_ALIAS_FOLDERS.has(part),
+            (part, index) => index >= 1 && EXTERNAL_ALIAS_FOLDERS.has(part),
         );
-        if (!EXTERNAL_ALIAS_FOLDERS.has(rootFolder) || nestedFolderIndex < 0) {
+        if (nestedFolderIndex < 0) {
             continue;
         }
 
-        const aliasKey = `/${[rootFolder, ...parts.slice(nestedFolderIndex)].join('/')}`;
+        const aliasKey =
+            nestedFolderIndex === 1 && !EXTERNAL_ALIAS_FOLDERS.has(parts[0] ?? '')
+                ? `/${parts.slice(1).join('/')}`
+                : `/${[parts[0], ...parts.slice(nestedFolderIndex)].join('/')}`;
         const localFile = Bun.file(path.join(outDir, aliasKey.replace(/^\/+/, '')));
         if (await localFile.exists()) {
             continue;

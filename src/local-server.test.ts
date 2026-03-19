@@ -82,7 +82,7 @@ describe('startStaticServer', () => {
             '_external',
             'cdn.prod.website-files.com',
             '6891a5aecbde722a4a9adbba',
-            '68a3da2305ef5935615cdc49_1-We_listen_we_craft_we_deliver_(1).avif',
+            '68a3da2305ef5935615cdc49_1-We listen_we craft_we deliver (1).avif',
         );
         await Bun.write(filePath, new Uint8Array([1, 2, 3]));
 

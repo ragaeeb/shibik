@@ -94,6 +94,18 @@ describe('buildLocalPathAliases', () => {
         const aliases = await buildLocalPathAliases(outDir);
         expect(aliases['/assets/images/preload/gamepad.webp']).toBe('/assets/game/images/preload/gamepad.webp');
     });
+
+    it('should expose entry-dir asset folders under a root alias when the root file is missing', async () => {
+        const outDir = mkdtempSync(path.join(tmpdir(), 'shibuk-runtime-'));
+        tempDirs.push(outDir);
+
+        const localDir = path.join(outDir, 'apartment', 'assets');
+        mkdirSync(localDir, { recursive: true });
+        writeFileSync(path.join(localDir, 'index.css'), 'asset');
+
+        const aliases = await buildLocalPathAliases(outDir);
+        expect(aliases['/assets/index.css']).toBe('/apartment/assets/index.css');
+    });
 });
 
 describe('buildAbsoluteExternalAliases', () => {
