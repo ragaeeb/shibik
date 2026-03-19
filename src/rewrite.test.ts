@@ -120,6 +120,44 @@ describe('rewriteTextContent', () => {
         );
     });
 
+    it('should keep Next runtime chunk loaders rooted under _next static', () => {
+        const outDir = '/tmp/shibuk-test';
+        const filePath = path.join(outDir, '_next', 'static', 'chunks', 'turbopack-abc.js');
+
+        const result = rewriteTextContent({
+            aliasPairs: [],
+            content: 'otherChunks:["static/chunks/f0100e65ba620ab0.js","static/chunks/6c24ec714001b031.js"],let t="/_next/"',
+            filePath,
+            knownHosts: new Set<string>(),
+            originHost: 'www.lainzone.com',
+            outDir,
+        });
+
+        expect(result.content).toContain('otherChunks:["static/chunks/f0100e65ba620ab0.js","static/chunks/6c24ec714001b031.js"]');
+        expect(result.content).toContain('let t="/_next/"');
+        expect(result.content).not.toContain('otherChunks:["../../../static/chunks/f0100e65ba620ab0.js"');
+        expect(result.content).not.toContain('let t="../../../_next/"');
+    });
+
+    it('should preserve root asset urls inside non-runtime Next client chunks', () => {
+        const outDir = '/tmp/shibuk-test';
+        const filePath = path.join(outDir, '_next', 'static', 'chunks', 'app-client.js');
+
+        const result = rewriteTextContent({
+            aliasPairs: [],
+            content: 'const a="/images/programImages/NotepadIcon.png"; const b="/_next/static/chunks/f0100e65ba620ab0.js";',
+            filePath,
+            knownHosts: new Set<string>(),
+            originHost: 'www.lainzone.com',
+            outDir,
+        });
+
+        expect(result.content).toContain('const a="/images/programImages/NotepadIcon.png"');
+        expect(result.content).toContain('const b="/_next/static/chunks/f0100e65ba620ab0.js"');
+        expect(result.content).not.toContain('../../../images/programImages/NotepadIcon.png');
+        expect(result.content).not.toContain('../../../_next/static/chunks/f0100e65ba620ab0.js');
+    });
+
     it('should rewrite aliased asset paths relative to the current file', () => {
         const outDir = '/tmp/shibuk-test';
         const filePath = path.join(outDir, 'pages', 'nested', 'entry.js');
@@ -152,5 +190,24 @@ describe('rewriteTextContent', () => {
 
         expect(result.content).toContain('src="/_next/static/runtime.js"');
         expect(result.content).not.toContain('src="/runtime.js"');
+    });
+
+    it('should inject a base href for nested markup files', () => {
+        const outDir = '/tmp/shibuk-test';
+        const filePath = path.join(outDir, 'apartment', 'index.html');
+
+        const result = rewriteTextContent({
+            aliasPairs: [],
+            content:
+                '<html><head><script src="./assets/app.js"></script><link rel="stylesheet" href="./assets/app.css"></head><body></body></html>',
+            filePath,
+            knownHosts: new Set<string>(),
+            originHost: 'xrplace.io',
+            outDir,
+        });
+
+        expect(result.content).toContain('<base href="/apartment/">');
+        expect(result.content).toContain('<script src="/apartment/assets/app.js"></script>');
+        expect(result.content).toContain('<link rel="stylesheet" href="/apartment/assets/app.css">');
     });
 });

@@ -34,6 +34,8 @@ type RewritePatternSet = {
     cssAbsFolderRegex: RegExp;
     cssRelFolderRegex: RegExp;
     externalHosts: HostPattern[];
+    markupCssRelFolderRegex: RegExp;
+    markupRelFolderRegex: RegExp;
     originPattern: RegExp;
     originProtoLess: RegExp;
     relFolderRegex: RegExp;
@@ -65,8 +67,13 @@ const UMD_DEFINE_CHARCODE_PATTERN =
     /"f"==\(typeof define\)\[0\]\?define\(function\(\)\{return ([A-Za-z_$][\w$]*)\}\):e\.exports=\1/g;
 const NEXT_MANIFEST_MARKER_PATTERN = /__BUILD_MANIFEST|__SSG_MANIFEST/;
 const NEXT_MANIFEST_STATIC_PATTERN = /(["'`])(?:\.\.\/)+static\//g;
+const NEXT_RUNTIME_STATIC_PATTERN = /(["'`])(?:\.\.\/)+static\/(chunks|css)\//g;
+const NEXT_RUNTIME_ROOT_PATTERN = /(["'`])(?:\.\.\/)+_next\//g;
+const NEXT_CLIENT_CHUNK_ROOT_PATTERN =
+    /(["'`])(?:\.\.\/)+(_next|assets|b|baluchon|icons|preloader|static|media|img|images|fonts|models|textures|draco|ktx2|wasm|workers|worker)\//g;
 const FETCH_JSON_CONTENT_TYPE_PATTERN =
     /([A-Za-z_$][\w$]*)\.headers\.get\(["']Content-Type["']\)\s*==\s*["']application\/json["']/g;
+const HEAD_OPEN_PATTERN = /<head\b[^>]*>/i;
 
 const replaceIfMatched = (content: string, pattern: RegExp, replacement: string): RewriteResult => {
     if (!pattern.test(content)) {
@@ -180,10 +187,32 @@ const applyMarkupRewrites = (
 
     let nextContent = content;
     let modified = false;
+    const relativeDir = path.relative(context.outDir, context.fileDir).replace(/\\/g, '/');
+    const markupDirSlash = !context.isExternal && relativeDir ? `/${withTrailingSlash(relativeDir)}` : '/';
 
-    const result = replaceIfMatched(nextContent, patterns.baseHrefRegex, `$1$2${context.contentRootSlash}$2`);
+    const result = replaceIfMatched(nextContent, patterns.baseHrefRegex, `$1$2${markupDirSlash}$2`);
     nextContent = result.content;
     modified ||= result.modified;
+
+    if (!context.isExternal) {
+        if (markupDirSlash !== '/' && !/<base\b/i.test(nextContent) && HEAD_OPEN_PATTERN.test(nextContent)) {
+            nextContent = nextContent.replace(HEAD_OPEN_PATTERN, `$&<base href="${markupDirSlash}">`);
+            modified = true;
+        }
+
+        const markupFolderRoot = markupDirSlash === '/' ? '/' : markupDirSlash;
+        const attrResult = replaceIfMatched(nextContent, patterns.markupRelFolderRegex, `$1${markupFolderRoot}$2/`);
+        nextContent = attrResult.content;
+        modified ||= attrResult.modified;
+
+        const cssResult = replaceIfMatched(
+            nextContent,
+            patterns.markupCssRelFolderRegex,
+            `url($1${markupFolderRoot}$2/`,
+        );
+        nextContent = cssResult.content;
+        modified ||= cssResult.modified;
+    }
 
     return { content: nextContent, modified };
 };
@@ -207,6 +236,17 @@ const applyJavaScriptPatches = (content: string, filePath: string): RewriteResul
         NEXT_MANIFEST_MARKER_PATTERN.test(nextContent);
     if (isNextManifest) {
         nextContent = nextContent.replace(NEXT_MANIFEST_STATIC_PATTERN, '$1static/');
+    }
+
+    const isNextChunkFile = filePath.includes(`${path.sep}_next${path.sep}static${path.sep}chunks${path.sep}`);
+    const isNextRuntimeChunk = isNextChunkFile && /(?:^|[\\/])(webpack|turbopack)[^\\/]*\.(?:js|mjs|cjs)$/i.test(filePath);
+    if (isNextRuntimeChunk) {
+        nextContent = nextContent.replace(NEXT_RUNTIME_STATIC_PATTERN, '$1static/$2/');
+        nextContent = nextContent.replace(NEXT_RUNTIME_ROOT_PATTERN, '$1/_next/');
+    }
+
+    if (isNextChunkFile && !isNextRuntimeChunk) {
+        nextContent = nextContent.replace(NEXT_CLIENT_CHUNK_ROOT_PATTERN, '$1/$2/');
     }
 
     nextContent = nextContent.replace(
@@ -242,6 +282,8 @@ const createRewritePatterns = (
         cssAbsFolderRegex: new RegExp(`url\\((['"]?)\\/(${folderPattern})\\/`, 'g'),
         cssRelFolderRegex: new RegExp(`url\\((['"]?)(${folderPattern})\\/`, 'g'),
         externalHosts,
+        markupCssRelFolderRegex: new RegExp(`url\\((['"]?)(?:\\.\\/)?(${folderPattern})\\/`, 'g'),
+        markupRelFolderRegex: new RegExp(`(['"])(?:\\.\\/)?(${folderPattern})\\/`, 'g'),
         originPattern: new RegExp(`https?:\\/\\/${escapeRegex(originHost)}\\/`, 'g'),
         originProtoLess: new RegExp(`\\/\\/${escapeRegex(originHost)}\\/`, 'g'),
         relFolderRegex: new RegExp(`(['"\\x60])(${folderPattern})\\/`, 'g'),

@@ -16,7 +16,6 @@ export const sanitizeSegment = (segment: string) => {
     if (safe === '.' || safe === '..') {
         safe = safe.replace(/\./g, '_');
     }
-    safe = safe.replace(/[\s]+/g, '_');
     return safe;
 };
 
